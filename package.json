@@ -1,6 +1,6 @@
 
   {
-      "name": "Expense Tracker App Design",
+      "name": "expense-tracker-app",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
@@ -51,10 +51,16 @@
       "devDependencies": {
           "@types/node": "^20.10.0",
           "@vitejs/plugin-react-swc": "^3.10.2",
-          "vite": "6.3.5"
+          "vite": "6.3.5",
+          "@types/react": "^18.3.0",
+            "@types/react-dom": "^18.3.0",
+            "typescript": "^5.0.0"
       },
       "scripts": {
           "dev": "vite",
-          "build": "vite build"
-      }
+          "build": "vite build",
+          "preview": "vite preview",
+          "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+      },
+      "type": "module"
   }
