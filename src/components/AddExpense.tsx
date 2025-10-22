@@ -14,6 +14,7 @@ import { cn } from './ui/utils';
 import { toast } from 'sonner@2.0.3';
 import type { Category, Expense, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
+import { expenseAPI } from '../services/api';
 
 interface AddExpenseProps {
   categories: Category[];
@@ -129,6 +130,7 @@ export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <button onClick={expenseAPI.getAll} > Button </button>
             <div className="space-y-2">
               <Label htmlFor="amount">Сумма</Label>
               <div className="flex gap-2">
