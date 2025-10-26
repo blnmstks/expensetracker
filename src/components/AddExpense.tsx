@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Trash2, DollarSign, MoreHorizontal } from 'lucide-react';
@@ -11,52 +11,40 @@ import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Textarea } from './ui/textarea';
 import { cn } from './ui/utils';
-import { toast } from 'sonner@2.0.3';
-import type { Category, Expense, CurrencySettings } from '../App';
+import { toast } from 'sonner';
+import type { Expense, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { expenseAPI } from '../services/api';
+import { useCategories } from '../store/categories';
 
 interface AddExpenseProps {
-  categories: Category[];
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   expenses: Expense[];
   onDeleteExpense: (id: string) => void;
   currencySettings: CurrencySettings;
 }
 
-export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
+export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(currencySettings.defaultCurrency);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(1);
   const [date, setDate] = useState<Date>(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
-
+  const { categories, fetchCategories } = useCategories();
+  
   // Get quick access currencies (first 3 active currencies)
   const quickCurrencies = currencySettings.activeCurrencies.slice(0, 3);
   const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
 
-  const getCurrencySymbol = (code: string) => {
-    return AVAILABLE_CURRENCIES.find(c => c.code === code)?.symbol || code;
-  };
-
-  const convertToDefaultCurrency = (amount: number, fromCurrency: string) => {
-    if (fromCurrency === currencySettings.defaultCurrency) {
-      return amount;
-    }
-    
-    const fromRate = currencySettings.exchangeRates[fromCurrency] || 1;
-    const toRate = currencySettings.exchangeRates[currencySettings.defaultCurrency] || 1;
-    
-    const inUSD = amount / fromRate;
-    return inUSD * toRate;
+  const getCurrencySymbol = (code: number) => {
+    return AVAILABLE_CURRENCIES.find(c => c.id === code)?.symbol || code;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!amount || !category) {
+    if (!amount) {
       return;
     }
 
@@ -69,58 +57,24 @@ export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense
       amount: numAmount,
       currency,
       category,
-      date: date.toISOString(),
+      date: format(date, 'yyyy-MM-dd'),
       month: format(date, 'yyyy-MM'),
       comment: comment.trim() || undefined,
     });
-
-    // Show toast notification
-    const convertedAmount = convertToDefaultCurrency(numAmount, currency);
-    const defaultSymbol = getCurrencySymbol(currencySettings.defaultCurrency);
-    
-    if (currency === currencySettings.defaultCurrency) {
-      toast.success(`Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)}`);
-    } else {
-      toast.success(
-        `Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)} (${convertedAmount.toFixed(2)} ${defaultSymbol})`
-      );
-    }
+    toast.success(`Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)}`);
 
     setAmount('');
-    setCategory('');
+    setCategory(1);
     setComment('');
   };
 
-  const getCategoryById = (id: string) => {
+  const getCategoryById = (id: number) => {
     return categories.find(cat => cat.id === id);
   };
 
-  const currentMonthExpenses = expenses.filter(exp => 
-    exp.month === format(new Date(), 'yyyy-MM')
-  );
-
-  // Calculate totals for each active currency
-  const monthTotalsByCurrency = currencySettings.activeCurrencies.map(currCode => {
-    const total = currentMonthExpenses.reduce((sum, exp) => {
-      const expCurrency = exp.currency || currencySettings.defaultCurrency;
-      const convertedAmount = convertToDefaultCurrency(exp.amount, expCurrency);
-      const finalAmount = convertToDefaultCurrency(convertedAmount, currencySettings.defaultCurrency);
-      
-      // Convert to target currency
-      const targetRate = currencySettings.exchangeRates[currCode] || 1;
-      const baseRate = currencySettings.exchangeRates[currencySettings.defaultCurrency] || 1;
-      const inBase = finalAmount / baseRate;
-      const inTarget = inBase * targetRate;
-      
-      return sum + inTarget;
-    }, 0);
-
-    return {
-      currency: currCode,
-      symbol: getCurrencySymbol(currCode),
-      total,
-    };
-  });
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -130,7 +84,6 @@ export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <button onClick={expenseAPI.getAll} > Button </button>
             <div className="space-y-2">
               <Label htmlFor="amount">Сумма</Label>
               <div className="flex gap-2">
@@ -202,20 +155,20 @@ export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense
             <div className="space-y-2">
               <Label htmlFor="category">Категория</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
+                 <SelectTrigger id="category">
+                   <SelectValue placeholder="Выберите категорию" />
+                 </SelectTrigger>
+                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
+                    <SelectItem key={cat.id} value={String(cat.id)}>
                       <span className="flex items-center">
                         <span className="mr-2">{cat.icon}</span>
                         {cat.name}
                       </span>
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
+                 </SelectContent>
+               </Select>
             </div>
 
             <div className="space-y-2">
@@ -271,13 +224,13 @@ export function AddExpense({ categories, onAddExpense, expenses, onDeleteExpense
       <Card className="mt-6">
         <CardContent className="pt-6">
           <div className="text-neutral-500 mb-2">Расходы за месяц</div>
-          <div className="space-y-1">
+          {/* <div className="space-y-1">
             {monthTotalsByCurrency.map(({ currency, symbol, total }) => (
               <div key={currency} className="text-emerald-600">
                 {total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {symbol}
               </div>
             ))}
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 

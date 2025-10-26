@@ -1,8 +1,10 @@
 import axios from 'axios';
+import { getCookie } from './cookie';
+
 
 // Экземпляр axios с базовыми настройками
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.API_URL,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
   timeout: 10000, // 10 секунд
   headers: {
     'Content-Type': 'application/json',
@@ -12,16 +14,6 @@ const axiosInstance = axios.create({
   xsrfCookieName: 'csrftoken', // Имя CSRF cookie в Django
   xsrfHeaderName: 'X-CSRFToken', // Имя CSRF заголовка
 });
-
-// Функция для получения CSRF токена из cookies
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) {
-    return parts.pop()?.split(';').shift() || null;
-  }
-  return null;
-}
 
 // Interceptor для добавления токена авторизации к каждому запросу
 axiosInstance.interceptors.request.use(

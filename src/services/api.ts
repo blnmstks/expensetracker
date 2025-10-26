@@ -1,12 +1,14 @@
 import axiosInstance from '../lib/axios';
 import type { Expense, Category, CurrencySettings } from '../App';
 
+// Экспортируем authAPI из отдельного файла
+export { authAPI } from './authAPI';
+
 // API сервисы для работы с расходами
 export const expenseAPI = {
   // Получить все расходы
   getAll: async () => {
     const response = await axiosInstance.get<Expense[]>('/expenses/');
-    console.log('Fetched expenses from API:', response.data);
     return response.data;
   },
 
@@ -51,15 +53,8 @@ export const expenseAPI = {
 
 // API сервисы для работы с категориями
 export const categoryAPI = {
-  // Получить все категории
   getAll: async () => {
     const response = await axiosInstance.get<Category[]>('/categories/');
-    return response.data;
-  },
-
-  // Получить категорию по ID
-  getById: async (id: string) => {
-    const response = await axiosInstance.get<Category>(`/categories/${id}/`);
     return response.data;
   },
 
@@ -128,37 +123,6 @@ export const analyticsAPI = {
     const response = await axiosInstance.get('/analytics/trends/', {
       params: { period },
     });
-    return response.data;
-  },
-};
-
-// API сервисы для аутентификации (если понадобится)
-export const authAPI = {
-  // Вход
-  login: async (email: string, password: string) => {
-    const response = await axiosInstance.post('/auth/login/', { email, password });
-    if (response.data.token) {
-      localStorage.setItem('authToken', response.data.token);
-    }
-    return response.data;
-  },
-
-  // Регистрация
-  register: async (email: string, password: string, name: string) => {
-    const response = await axiosInstance.post('/auth/register/', { email, password, name });
-    return response.data;
-  },
-
-  // Выход
-  logout: async () => {
-    const response = await axiosInstance.post('/auth/logout/');
-    localStorage.removeItem('authToken');
-    return response.data;
-  },
-
-  // Получить текущего пользователя
-  getCurrentUser: async () => {
-    const response = await axiosInstance.get('/auth/me/');
     return response.data;
   },
 };
