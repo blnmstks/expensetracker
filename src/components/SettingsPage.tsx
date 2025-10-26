@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -13,12 +13,9 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from './ui/utils';
 import type { Category, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
+import { useCategories } from '../store/categories';
 
 interface SettingsPageProps {
-  categories: Category[];
-  onAddCategory: (category: Omit<Category, 'id'>) => void;
-  onDeleteCategory: (id: string) => void;
-  onUpdateCategory: (id: string, category: Partial<Category>) => void;
   currencySettings: CurrencySettings;
   onUpdateCurrencySettings: (settings: CurrencySettings) => void;
 }
@@ -27,10 +24,6 @@ const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '
 const COLOR_OPTIONS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#84cc16'];
 
 export function SettingsPage({ 
-  categories, 
-  onAddCategory, 
-  onDeleteCategory, 
-  onUpdateCategory,
   currencySettings,
   onUpdateCurrencySettings 
 }: SettingsPageProps) {
@@ -42,14 +35,20 @@ export function SettingsPage({
   const [defaultCurrencyOpen, setDefaultCurrencyOpen] = useState(false);
   const [manualRates, setManualRates] = useState(currencySettings.exchangeRates);
 
+  const { categories, fetchCategories } = useCategories();
+    
+    useEffect(() => {
+      fetchCategories();
+    }, []);
+  
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    onAddCategory({
-      name: newCategoryName,
-      icon: newCategoryIcon,
-      color: newCategoryColor,
-    });
+    // onAddCategory({
+    //   name: newCategoryName,
+    //   icon: newCategoryIcon,
+    //   color: newCategoryColor,
+    // });
 
     setNewCategoryName('');
     setNewCategoryIcon('📦');
@@ -67,11 +66,11 @@ export function SettingsPage({
   const handleUpdateCategory = () => {
     if (!editingCategory || !newCategoryName.trim()) return;
 
-    onUpdateCategory(editingCategory.id, {
-      name: newCategoryName,
-      icon: newCategoryIcon,
-      color: newCategoryColor,
-    });
+    // onUpdateCategory(editingCategory.id, {
+    //   name: newCategoryName,
+    //   icon: newCategoryIcon,
+    //   color: newCategoryColor,
+    // });
 
     setEditingCategory(null);
     setNewCategoryName('');
@@ -128,28 +127,28 @@ export function SettingsPage({
   };
 
   const handleDefaultCurrencyChange = (currencyCode: string) => {
-    const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyCode)
-      ? currencySettings.activeCurrencies
-      : [...currencySettings.activeCurrencies, currencyCode];
+    // const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyCode)
+    //   ? currencySettings.activeCurrencies
+    //   : [...currencySettings.activeCurrencies, currencyCode];
 
     onUpdateCurrencySettings({
       ...currencySettings,
-      defaultCurrency: currencyCode,
-      activeCurrencies: newActiveCurrencies,
+      // defaultCurrency: currencyCode,
+      // activeCurrencies: newActiveCurrencies,
     });
     setDefaultCurrencyOpen(false);
   };
 
   const handleActiveCurrencyToggle = (currencyCode: string, checked: boolean) => {
-    if (currencyCode === currencySettings.defaultCurrency) return; // Can't deselect default
+    // if (currencyCode === currencySettings.defaultCurrency) return; // Can't deselect default
 
-    const newActiveCurrencies = checked
-      ? [...currencySettings.activeCurrencies, currencyCode]
-      : currencySettings.activeCurrencies.filter(c => c !== currencyCode);
+    // const newActiveCurrencies = checked
+    //   ? [...currencySettings.activeCurrencies, currencyCode]
+    //   : currencySettings.activeCurrencies.filter(c => c !== currencyCode);
 
     onUpdateCurrencySettings({
       ...currencySettings,
-      activeCurrencies: newActiveCurrencies,
+      // activeCurrencies: newActiveCurrencies,
     });
   };
 
@@ -201,7 +200,7 @@ export function SettingsPage({
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
                 <span>
-                  {AVAILABLE_CURRENCIES.find(c => c.code === currencySettings.defaultCurrency)?.name} ({currencySettings.defaultCurrency})
+                  {/* {AVAILABLE_CURRENCIES.find(c => c.code === currencySettings.defaultCurrency)?.name} ({currencySettings.defaultCurrency}) */}
                 </span>
               </Button>
             </PopoverTrigger>
@@ -238,7 +237,7 @@ export function SettingsPage({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {AVAILABLE_CURRENCIES.filter(c => 
+            {/* {AVAILABLE_CURRENCIES.filter(c => 
               currencySettings.activeCurrencies.includes(c.code) || c.code === currencySettings.defaultCurrency
             ).map((currency) => (
               <div key={currency.code} className="flex items-center justify-between p-3 rounded-lg border border-neutral-200">
@@ -255,12 +254,12 @@ export function SettingsPage({
                   disabled={currency.code === currencySettings.defaultCurrency}
                 />
               </div>
-            ))}
+            ))} */}
             
             <div className="pt-2">
               <Label className="text-sm text-neutral-500">Добавить другие валюты:</Label>
               <div className="mt-2 max-h-40 overflow-y-auto space-y-2">
-                {AVAILABLE_CURRENCIES.filter(c => 
+                {/* {AVAILABLE_CURRENCIES.filter(c => 
                   !currencySettings.activeCurrencies.includes(c.code) && c.code !== currencySettings.defaultCurrency
                 ).map((currency) => (
                   <div key={currency.code} className="flex items-center justify-between p-2 rounded hover:bg-neutral-50">
@@ -273,7 +272,7 @@ export function SettingsPage({
                       onCheckedChange={(checked) => handleActiveCurrencyToggle(currency.code, checked as boolean)}
                     />
                   </div>
-                ))}
+                ))} */}
               </div>
             </div>
           </div>
@@ -332,7 +331,7 @@ export function SettingsPage({
                       type="number"
                       step="0.01"
                       value={manualRates[currCode] || 1}
-                      onChange={(e) => handleManualRateChange(currCode, e.target.value)}
+                      // onChange={(e) => handleManualRateChange(currCode, e.target.value)}
                       disabled={currCode === currencySettings.defaultCurrency}
                     />
                   </div>
@@ -510,7 +509,7 @@ export function SettingsPage({
                     variant="ghost"
                     size="icon"
                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => onDeleteCategory(category.id)}
+                    // onClick={() => onDeleteCategory(category.id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

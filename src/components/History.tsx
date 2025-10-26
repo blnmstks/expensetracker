@@ -3,15 +3,22 @@ import { ru } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { Category, Expense, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
+import { useEffect } from 'react';
+import { useCategories } from '../store/categories';
 
 interface HistoryProps {
   expenses: Expense[];
-  categories: Category[];
   currencySettings: CurrencySettings;
 }
 
-export function History({ expenses, categories, currencySettings }: HistoryProps) {
-  const getCategoryById = (id: string) => {
+export function History({ expenses, currencySettings }: HistoryProps) {
+  const { categories, fetchCategories } = useCategories();
+  
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const getCategoryById = (id: number) => {
     return categories.find(cat => cat.id === id);
   };
 
