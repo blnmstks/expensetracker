@@ -10,6 +10,7 @@ type CategoriesStore = {
 type ExpensesStore = {
   expenses: Expense[];
   fetchExpenses: () => Promise<void>;
+  deleteExpense: (id: number) => Promise<void>;
 };
 
 export const useCategories = create<CategoriesStore>((set) => ({
@@ -28,5 +29,11 @@ export const useExpenses = create<ExpensesStore>((set) => ({
     const end = new Date().toISOString();
     const data = await expenseAPI.getByPeriod();
     set({ expenses : data });
+  },
+  deleteExpense: async (id) => {
+    await expenseAPI.delete(String(id));
+    set((state) => ({
+      expenses: state.expenses.filter((expense) => expense.id !== id),
+    }));
   },
 }));

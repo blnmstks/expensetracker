@@ -21,12 +21,21 @@ import ErrorBoundary, { SectionFallback } from "./components/ErrorBoundary";
 
 export type Expense = {
   id: number;
+  category_color: string;
+  category_name: string;
   amount: number;
   currency: number;
   category: number;
   date: string;
-  month: string;
+  month: number;
   comment?: string;
+  currency_code: string;
+  currency_symbol: number;
+  year: number;
+
+//   amount
+// : 
+// "22.00"
 };
 
 export type Category = {
@@ -275,7 +284,6 @@ export default function App() {
           )}
           {activeTab === "history" && (
             <History
-              expenses={expenses}
               currencySettings={currencySettings}
             />
           )}
