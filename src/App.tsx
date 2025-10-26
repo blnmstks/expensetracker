@@ -5,91 +5,60 @@ import {
   Settings,
   Plus,
   History as HistoryIcon,
+  LogOut,
 } from "lucide-react";
 import { AddExpense } from "./components/AddExpense";
 import { Analytics } from "./components/Analytics";
 import { SettingsPage } from "./components/SettingsPage";
 import { History } from "./components/History";
+import { Login } from "./components/Login";
 import { Button } from "./components/ui/button";
 import { cn } from "./components/ui/utils";
 import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
+import { expenseAPI, authAPI } from "./services/api";
 
 export type Expense = {
   id: string;
   amount: number;
-  currency: string;
-  category: string;
+  currency: number;
+  category: number;
   date: string;
   month: string;
   comment?: string;
 };
 
 export type Category = {
-  id: string;
+  id: number;
   name: string;
   color: string;
   icon: string;
 };
 
 export type Currency = {
+  id: number;
   code: string;
   symbol: string;
   name: string;
 };
 
 export type CurrencySettings = {
-  defaultCurrency: string;
-  activeCurrencies: string[];
+  defaultCurrency: number;
+  activeCurrencies: number[];
   exchangeRates: Record<string, number>;
   syncWithGoogle: boolean;
   googleRateAdjustment: number;
 };
 
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: "1", name: "Продукты", color: "#10b981", icon: "🛒" },
-  { id: "2", name: "Транспорт", color: "#3b82f6", icon: "🚗" },
-  {
-    id: "3",
-    name: "Развлечения",
-    color: "#f59e0b",
-    icon: "🎮",
-  },
-  { id: "4", name: "Здоровье", color: "#ef4444", icon: "💊" },
-  { id: "5", name: "Одежда", color: "#8b5cf6", icon: "👕" },
-  {
-    id: "6",
-    name: "Образование",
-    color: "#06b6d4",
-    icon: "📚",
-  },
-];
-
 export const AVAILABLE_CURRENCIES: Currency[] = [
-  { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "RUB", symbol: "₽", name: "Russian Ruble" },
-  { code: "THB", symbol: "฿", name: "Thai Baht" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "JPY", symbol: "¥", name: "Japanese Yen" },
-  { code: "CNY", symbol: "¥", name: "Chinese Yuan" },
-  { code: "KRW", symbol: "₩", name: "South Korean Won" },
-  { code: "INR", symbol: "₹", name: "Indian Rupee" },
-  { code: "AUD", symbol: "A$", name: "Australian Dollar" },
-  { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
-  { code: "CHF", symbol: "CHF", name: "Swiss Franc" },
-  { code: "SEK", symbol: "kr", name: "Swedish Krona" },
-  { code: "NOK", symbol: "kr", name: "Norwegian Krone" },
-  { code: "SGD", symbol: "S$", name: "Singapore Dollar" },
-  { code: "HKD", symbol: "HK$", name: "Hong Kong Dollar" },
-  { code: "NZD", symbol: "NZ$", name: "New Zealand Dollar" },
-  { code: "MXN", symbol: "MX$", name: "Mexican Peso" },
-  { code: "BRL", symbol: "R$", name: "Brazilian Real" },
-  { code: "ZAR", symbol: "R", name: "South African Rand" },
+  { id: 1, code: "USD", symbol: "$", name: "US Dollar" },
+  { id: 2, code: "RUB", symbol: "₽", name: "Russian Ruble" },
+  { id: 3, code: "THB", symbol: "฿", name: "Thai Baht" },
 ];
 
 const DEFAULT_CURRENCY_SETTINGS: CurrencySettings = {
-  defaultCurrency: "USD",
-  activeCurrencies: ["USD", "RUB", "THB"],
+  defaultCurrency: 1,
+  activeCurrencies: [1, 2, 3],
   exchangeRates: {
     USD: 1,
     RUB: 92,
@@ -104,57 +73,33 @@ export default function App() {
     "expenses" | "analytics" | "history" | "settings"
   >("expenses");
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Category[]>(
-    DEFAULT_CATEGORIES,
-  );
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(
     DEFAULT_CURRENCY_SETTINGS,
   );
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Load data from localStorage
   useEffect(() => {
-    const savedExpenses = localStorage.getItem("expenses");
-    const savedCategories = localStorage.getItem("categories");
-    const savedCurrencySettings = localStorage.getItem("currencySettings");
-
-    if (savedExpenses) {
-      setExpenses(JSON.parse(savedExpenses));
-    }
-    if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    }
-    if (savedCurrencySettings) {
-      setCurrencySettings(JSON.parse(savedCurrencySettings));
+    if(localStorage.getItem('auth_token')) {
+      setIsAuthenticated(true);
     }
   }, []);
 
-  // Save expenses to localStorage
-  useEffect(() => {
-    localStorage.setItem("expenses", JSON.stringify(expenses));
-  }, [expenses]);
+  const addExpense = async (expense: Omit<Expense, "id">) => {
+    try {
+      const createdExpense = await expenseAPI.create(expense);
 
-  // Save categories to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      "categories",
-      JSON.stringify(categories),
-    );
-  }, [categories]);
-
-  // Save currency settings to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      "currencySettings",
-      JSON.stringify(currencySettings),
-    );
-  }, [currencySettings]);
-
-  const addExpense = (expense: Omit<Expense, "id">) => {
-    const newExpense: Expense = {
-      ...expense,
-      id: Date.now().toString(),
-    };
-    setExpenses([newExpense, ...expenses]);
+      const newExpense: Expense = {
+        ...createdExpense,
+        id: createdExpense.id?.toString(),
+      };
+      setExpenses([newExpense, ...expenses]);
+      
+      return newExpense;
+  } catch (error) {
+      console.error("Failed to add expense:", error);
+    throw error;
+  }
   };
 
   const deleteExpense = (id: string) => {
@@ -162,27 +107,51 @@ export default function App() {
   };
 
   const addCategory = (category: Omit<Category, "id">) => {
-    const newCategory: Category = {
+    const newCategory = {
       ...category,
-      id: Date.now().toString(),
     };
-    setCategories([...categories, newCategory]);
+    // setCategories([...categories, newCategory]);
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories(categories.filter((cat) => cat.id !== id));
+  // Обработчик успешного входа
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    toast.success('Добро пожаловать!');
   };
 
-  const updateCategory = (
-    id: string,
-    updatedCategory: Partial<Category>,
-  ) => {
-    setCategories(
-      categories.map((cat) =>
-        cat.id === id ? { ...cat, ...updatedCategory } : cat,
-      ),
+  // Обработчик выхода
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      localStorage.setItem('auth_token', '');
+      setIsAuthenticated(false);
+      toast.success('Вы вышли из системы');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Ошибка при выходе');
+    }
+  };
+
+  // if (isCheckingAuth) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+  //       <div className="text-center">
+  //         <Wallet className="w-16 h-16 text-emerald-600 mx-auto mb-4 animate-pulse" />
+  //         <div className="text-lg text-neutral-600">Загрузка...</div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // Показываем страницу входа, если не авторизован
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster />
+        <Login onLoginSuccess={handleLoginSuccess} />
+      </>
     );
-  };
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -247,15 +216,42 @@ export default function App() {
                 Настройки
               </Button>
             </nav>
+            
+            {/* User info and logout */}
+            <div className="px-3 py-4 border-t border-neutral-200">
+              {currentUser && (
+                <div className="text-sm text-neutral-600 mb-2 px-3">
+                  {currentUser.email}
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-3 h-5 w-5" />
+                Выйти
+              </Button>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Mobile Header */}
       <header className="md:hidden sticky top-0 z-10 bg-white border-b border-neutral-200 px-4 py-4">
-        <div className="flex items-center">
-          <Wallet className="w-7 h-7 text-emerald-600 mr-3" />
-          <h1 className="text-neutral-900">Трекер расходов</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Wallet className="w-7 h-7 text-emerald-600 mr-3" />
+            <h1 className="text-neutral-900">Трекер расходов</h1>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-red-600"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       </header>
 
@@ -264,7 +260,6 @@ export default function App() {
         <div className="px-4 py-8 md:px-8">
           {activeTab === "expenses" && (
             <AddExpense
-              categories={categories}
               onAddExpense={addExpense}
               expenses={expenses}
               onDeleteExpense={deleteExpense}
@@ -274,23 +269,18 @@ export default function App() {
           {activeTab === "analytics" && (
             <Analytics
               expenses={expenses}
-              categories={categories}
               currencySettings={currencySettings}
             />
           )}
           {activeTab === "history" && (
             <History
               expenses={expenses}
-              categories={categories}
               currencySettings={currencySettings}
             />
           )}
           {activeTab === "settings" && (
             <SettingsPage
-              categories={categories}
               onAddCategory={addCategory}
-              onDeleteCategory={deleteCategory}
-              onUpdateCategory={updateCategory}
               currencySettings={currencySettings}
               onUpdateCurrencySettings={setCurrencySettings}
             />
