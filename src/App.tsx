@@ -20,7 +20,7 @@ import { expenseAPI, authAPI } from "./services/api";
 import ErrorBoundary, { SectionFallback } from "./components/ErrorBoundary";
 
 export type Expense = {
-  id: string;
+  id: number;
   amount: number;
   currency: number;
   category: number;
@@ -92,7 +92,7 @@ export default function App() {
 
       const newExpense: Expense = {
         ...createdExpense,
-        id: createdExpense.id?.toString(),
+        id: createdExpense.id
       };
       setExpenses([newExpense, ...expenses]);
       
@@ -103,7 +103,7 @@ export default function App() {
   }
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = (id: number) => {
     setExpenses(expenses.filter((exp) => exp.id !== id));
   };
 

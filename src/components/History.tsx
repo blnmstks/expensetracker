@@ -1,21 +1,22 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import type { Category, Expense, CurrencySettings } from '../App';
+import type { Expense, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useEffect } from 'react';
-import { useCategories } from '../store/categories';
+import { useCategories, useExpenses } from '../store/categories';
 
 interface HistoryProps {
-  expenses: Expense[];
   currencySettings: CurrencySettings;
 }
 
-export function History({ expenses, currencySettings }: HistoryProps) {
+export function History({ currencySettings }: HistoryProps) {
   const { categories, fetchCategories } = useCategories();
-  
+  const { expenses, fetchExpenses } = useExpenses();
+
   useEffect(() => {
     fetchCategories();
+    fetchExpenses();
   }, []);
 
   const getCategoryById = (id: number) => {
