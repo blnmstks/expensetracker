@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Calendar as CalendarIcon, TrendingDown } from 'lucide-react';
@@ -11,19 +11,24 @@ import { cn } from './ui/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import type { Category, Expense, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
+import { useCategories } from '../store/categories';
 
 interface AnalyticsProps {
   expenses: Expense[];
-  categories: Category[];
   currencySettings: CurrencySettings;
 }
 
-export function Analytics({ expenses, categories, currencySettings }: AnalyticsProps) {
+export function Analytics({ expenses, currencySettings }: AnalyticsProps) {
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'all' | 'custom'>('month');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [startCalendarOpen, setStartCalendarOpen] = useState(false);
   const [endCalendarOpen, setEndCalendarOpen] = useState(false);
+  const { categories, fetchCategories } = useCategories();
+    
+    useEffect(() => {
+      fetchCategories();
+    }, []);
 
   const convertToDefaultCurrency = (amount: number, fromCurrency: string) => {
     if (fromCurrency === currencySettings.defaultCurrency) {

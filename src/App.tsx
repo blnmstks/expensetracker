@@ -17,6 +17,7 @@ import { cn } from "./components/ui/utils";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { expenseAPI, authAPI } from "./services/api";
+import ErrorBoundary, { SectionFallback } from "./components/ErrorBoundary";
 
 export type Expense = {
   id: string;
@@ -106,13 +107,6 @@ export default function App() {
     setExpenses(expenses.filter((exp) => exp.id !== id));
   };
 
-  const addCategory = (category: Omit<Category, "id">) => {
-    const newCategory = {
-      ...category,
-    };
-    // setCategories([...categories, newCategory]);
-  };
-
   // Обработчик успешного входа
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -152,6 +146,7 @@ export default function App() {
       </>
     );
   }
+  console.log('test error boundary');
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -259,18 +254,24 @@ export default function App() {
       <main className="md:pl-64 pb-20 md:pb-8">
         <div className="px-4 py-8 md:px-8">
           {activeTab === "expenses" && (
-            <AddExpense
-              onAddExpense={addExpense}
-              expenses={expenses}
-              onDeleteExpense={deleteExpense}
-              currencySettings={currencySettings}
-            />
+            <ErrorBoundary fallback={<SectionFallback name="Добавить расход" />}>
+              <AddExpense
+                onAddExpense={addExpense}
+                expenses={expenses}
+                onDeleteExpense={deleteExpense}
+                currencySettings={currencySettings}
+              />
+            </ErrorBoundary>
+            
           )}
           {activeTab === "analytics" && (
-            <Analytics
-              expenses={expenses}
-              currencySettings={currencySettings}
-            />
+            <ErrorBoundary fallback={<SectionFallback name="Аналитика" />}>
+                <Analytics
+                  expenses={expenses}
+                  currencySettings={currencySettings}
+                />
+            </ErrorBoundary>
+            
           )}
           {activeTab === "history" && (
             <History
@@ -280,7 +281,6 @@ export default function App() {
           )}
           {activeTab === "settings" && (
             <SettingsPage
-              onAddCategory={addCategory}
               currencySettings={currencySettings}
               onUpdateCurrencySettings={setCurrencySettings}
             />
