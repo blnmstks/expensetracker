@@ -19,7 +19,7 @@ import { useCategories } from '../store/categories';
 interface AddExpenseProps {
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   expenses: Expense[];
-  onDeleteExpense: (id: string) => void;
+  onDeleteExpense: (id: number) => void;
   currencySettings: CurrencySettings;
 }
 

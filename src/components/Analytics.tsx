@@ -1,319 +1,272 @@
 import { useState, useMemo, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar as CalendarIcon, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { cn } from './ui/utils';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import type { Category, Expense, CurrencySettings } from '../App';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store/categories';
+import { useCategories, useExpenses } from '../store/categories';
 
 interface AnalyticsProps {
-  expenses: Expense[];
   currencySettings: CurrencySettings;
 }
 
-export function Analytics({ expenses, currencySettings }: AnalyticsProps) {
-  const [dateRange, setDateRange] = useState<'week' | 'month' | 'all' | 'custom'>('month');
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [startCalendarOpen, setStartCalendarOpen] = useState(false);
-  const [endCalendarOpen, setEndCalendarOpen] = useState(false);
-  const { categories, fetchCategories } = useCategories();
-    
-    useEffect(() => {
-      fetchCategories();
-    }, []);
+interface MonthYearKey {
+  month: number;
+  year: number;
+  key: string;
+  display: string;
+}
 
-  const convertToDefaultCurrency = (amount: number, fromCurrency: string) => {
-    if (fromCurrency === currencySettings.defaultCurrency) {
+
+export function Analytics({ currencySettings }: AnalyticsProps) {
+  const [selectedCurrency, setSelectedCurrency] = useState<number>(currencySettings.defaultCurrency);
+  const { categories, fetchCategories } = useCategories();
+  const { expenses, fetchExpenses } = useExpenses();
+
+  useEffect(() => {
+    fetchCategories();
+    fetchExpenses();
+  }, []);
+
+  // Функция конвертации валют
+  const convertCurrency = (amount: number, fromCurrencyId: number, toCurrencyId: number) => {
+    if (fromCurrencyId === toCurrencyId) {
       return amount;
     }
     
-    const fromRate = currencySettings.exchangeRates[fromCurrency] || 1;
-    const toRate = currencySettings.exchangeRates[currencySettings.defaultCurrency] || 1;
+    const fromCurrency = AVAILABLE_CURRENCIES.find(c => c.id === fromCurrencyId);
+    const toCurrency = AVAILABLE_CURRENCIES.find(c => c.id === toCurrencyId);
+    
+    if (!fromCurrency || !toCurrency) return amount;
+    
+    const fromRate = currencySettings.exchangeRates[fromCurrency.code] || 1;
+    const toRate = currencySettings.exchangeRates[toCurrency.code] || 1;
     
     const inUSD = amount / fromRate;
     return inUSD * toRate;
   };
 
-  const getCurrencySymbol = (code: string) => {
-    return AVAILABLE_CURRENCIES.find(c => c.code === code)?.symbol || code;
+  // Получаем символ валюты
+  const getCurrencySymbol = (currencyId: number) => {
+    return AVAILABLE_CURRENCIES.find(c => c.id === currencyId)?.symbol || '';
   };
 
-  const filteredExpenses = useMemo(() => {
-    const now = new Date();
-    
-    return expenses.filter(expense => {
-      const expenseDate = new Date(expense.date);
-      
-      if (dateRange === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        return expenseDate >= weekAgo;
-      } else if (dateRange === 'month') {
-        const monthStart = startOfMonth(now);
-        const monthEnd = endOfMonth(now);
-        return expenseDate >= monthStart && expenseDate <= monthEnd;
-      } else if (dateRange === 'custom' && startDate && endDate) {
-        return expenseDate >= startDate && expenseDate <= endDate;
-      }
-      
-      return true;
-    });
-  }, [expenses, dateRange, startDate, endDate]);
-
-  const categoryData = useMemo(() => {
-    const categoryTotals = new Map<string, number>();
-    
-    filteredExpenses.forEach(expense => {
-      const expCurrency = expense.currency || currencySettings.defaultCurrency;
-      const convertedAmount = convertToDefaultCurrency(expense.amount, expCurrency);
-      const current = categoryTotals.get(expense.category) || 0;
-      categoryTotals.set(expense.category, current + convertedAmount);
-    });
-
-    return Array.from(categoryTotals.entries()).map(([categoryId, amount]) => {
-      const category = categories.find(cat => cat.id === categoryId);
-      return {
-        name: category?.name || 'Неизвестно',
-        value: amount,
-        color: category?.color || '#94a3b8',
-        icon: category?.icon || '📦',
-      };
-    }).sort((a, b) => b.value - a.value);
-  }, [filteredExpenses, categories, currencySettings]);
-
-  const monthlyData = useMemo(() => {
-    const monthTotals = new Map<string, number>();
+  // Получаем уникальные месяцы из расходов (от нового к старому)
+  const monthYearColumns = useMemo((): MonthYearKey[] => {
+    const monthsSet = new Set<string>();
     
     expenses.forEach(expense => {
-      const month = format(new Date(expense.date), 'MMM yyyy', { locale: ru });
-      const expCurrency = expense.currency || currencySettings.defaultCurrency;
-      const convertedAmount = convertToDefaultCurrency(expense.amount, expCurrency);
-      const current = monthTotals.get(month) || 0;
-      monthTotals.set(month, current + convertedAmount);
+      const date = new Date(expense.date);
+      const month = date.getMonth() + 1; // 1-12
+      const year = date.getFullYear();
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      monthsSet.add(key);
     });
+    
+    const monthsArray = Array.from(monthsSet).map(key => {
+      const [year, month] = key.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return {
+        month: parseInt(month),
+        year: parseInt(year),
+        key,
+        display: format(date, 'MMM yyyy', { locale: ru })
+      };
+    });
+    
+    // Сортируем от нового к старому
+    return monthsArray.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+  }, [expenses]);
 
-    return Array.from(monthTotals.entries())
-      .map(([month, amount]) => ({ month, amount }))
-      .sort((a, b) => {
-        const dateA = new Date(a.month);
-        const dateB = new Date(b.month);
-        return dateA.getTime() - dateB.getTime();
-      })
-      .slice(-6);
-  }, [expenses, currencySettings]);
+  // Подсчет расходов по категориям и месяцам
+  const tableData = useMemo(() => {
+    const data = new Map<number, Map<string, number>>();
+    
+    // Инициализируем данные для каждой категории
+    categories.forEach(category => {
+      data.set(category.id, new Map());
+    });
+    
+    // Заполняем данные
+    expenses.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      
+      const categoryId = expense.category;
+      const convertedAmount = convertCurrency(expense.amount, expense.currency, selectedCurrency);
+      
+      if (data.has(categoryId)) {
+        const categoryData = data.get(categoryId)!;
+        const currentAmount = categoryData.get(key) || 0;
+        categoryData.set(key, currentAmount + convertedAmount);
+      }
+    });
+    
+    // Подсчитываем итоги по строкам (категориям)
+    const rowTotals = new Map<number, number>();
+    data.forEach((monthData, categoryId) => {
+      let total = 0;
+      monthData.forEach(amount => {
+        total += amount;
+      });
+      rowTotals.set(categoryId, total);
+    });
+    
+    // Подсчитываем итоги по колонкам (месяцам)
+    const columnTotals = new Map<string, number>();
+    monthYearColumns.forEach(month => {
+      let total = 0;
+      data.forEach(categoryData => {
+        total += categoryData.get(month.key) || 0;
+      });
+      columnTotals.set(month.key, total);
+    });
+    
+    // Общий итог
+    let grandTotal = 0;
+    rowTotals.forEach(total => {
+      grandTotal += total;
+    });
+    
+    return { data, rowTotals, columnTotals, grandTotal };
+  }, [expenses, categories, monthYearColumns, selectedCurrency]);
 
-  const totalAmount = filteredExpenses.reduce((sum, exp) => {
-    const expCurrency = exp.currency || currencySettings.defaultCurrency;
-    return sum + convertToDefaultCurrency(exp.amount, expCurrency);
-  }, 0);
-  const averageExpense = filteredExpenses.length > 0 
-    ? totalAmount / filteredExpenses.length 
-    : 0;
+  // Сортируем категории по убыванию суммы
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const totalA = tableData.rowTotals.get(a.id) || 0;
+      const totalB = tableData.rowTotals.get(b.id) || 0;
+      console.log('tabelData.rowTotals', tableData.rowTotals.get(a.id));
+      return totalB - totalA;
+    });
+  }, [categories, tableData.rowTotals]);
+
+  // Форматирование числа
+  const formatAmount = (amount: number) => {
+    return amount.toLocaleString('ru-RU', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-neutral-900 mb-4">Аналитика расходов</h2>
+    <div className="max-w-full mx-auto space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-neutral-900">Аналитика расходов</h2>
+        
+        <div className="w-48">
+          <Select 
+            value={String(selectedCurrency)} 
+            onValueChange={(value) => setSelectedCurrency(Number(value))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите валюту" />
+            </SelectTrigger>
+            <SelectContent>
+              {AVAILABLE_CURRENCIES.map(currency => (
+                <SelectItem key={currency.id} value={String(currency.id)}>
+                  {currency.symbol} {currency.code}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Период" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Последние 7 дней</SelectItem>
-                  <SelectItem value="month">Текущий месяц</SelectItem>
-                  <SelectItem value="all">Всё время</SelectItem>
-                  <SelectItem value="custom">Выбрать период</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {dateRange === 'custom' && (
-              <>
-                <Popover open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'flex-1 justify-start',
-                        !startDate && 'text-neutral-500'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, 'dd MMM yyyy', { locale: ru }) : 'От'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        setStartDate(date);
-                        setStartCalendarOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'flex-1 justify-start',
-                        !endDate && 'text-neutral-500'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, 'dd MMM yyyy', { locale: ru }) : 'До'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => {
-                        setEndDate(date);
-                        setEndCalendarOpen(false);
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {expenses.length > 0 ? (
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-neutral-500 mb-1">Всего расходов</div>
-                <div className="text-emerald-600">{totalAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getCurrencySymbol(currencySettings.defaultCurrency)}</div>
-              </div>
-              <TrendingDown className="w-8 h-8 text-emerald-600 opacity-20" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-neutral-500 mb-1">Количество</div>
-            <div className="text-emerald-600">{filteredExpenses.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-neutral-500 mb-1">Средний расход</div>
-            <div className="text-emerald-600">{averageExpense.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getCurrencySymbol(currencySettings.defaultCurrency)}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {categoryData.length > 0 ? (
-        <>
-          {/* Category Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Расходы по категориям</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => `${value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getCurrencySymbol(currencySettings.defaultCurrency)}`}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Детализация</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {categoryData.map((cat, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: cat.color + '20' }}
-                        >
-                          <span>{cat.icon}</span>
-                        </div>
-                        <div>
-                          <div className="text-neutral-900">{cat.name}</div>
-                          <div className="text-neutral-500 text-sm">
-                            {((cat.value / totalAmount) * 100).toFixed(1)}%
+          <CardHeader>
+            <CardTitle>Расходы по категориям и месяцам</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold min-w-[200px] sticky left-0 bg-white z-10">
+                      Категория
+                    </TableHead>
+                    {monthYearColumns.map(month => (
+                      <TableHead key={month.key} className="text-right font-bold min-w-[120px]">
+                        {month.display}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-right font-bold min-w-[120px] bg-neutral-50">
+                      Итого
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedCategories.map(category => {
+                    const categoryMonthData = tableData.data.get(category.id);
+                    const rowTotal = tableData.rowTotals.get(category.id) || 0;
+                    
+                    // Пропускаем категории без расходов
+                    // if (rowTotal === 0) return null;
+                    
+                    return (
+                      <TableRow key={category.id}>
+                        <TableCell className="font-medium sticky left-0 bg-white z-10">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: category.color + '20' }}
+                            >
+                              <span>{category.icon}</span>
+                            </div>
+                            <span>{category.name}</span>
                           </div>
-                        </div>
-                      </div>
-                      <div className="text-neutral-900">
-                        {cat.value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getCurrencySymbol(currencySettings.defaultCurrency)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Monthly Trend */}
-          {monthlyData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Тренд по месяцам</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: number) => `${value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getCurrencySymbol(currencySettings.defaultCurrency)}`}
-                    />
-                    <Bar dataKey="amount" fill="#10b981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-        </>
+                        </TableCell>
+                        {monthYearColumns.map(month => {
+                          const amount = categoryMonthData?.get(month.key) || 0;
+                          return (
+                            <TableCell key={month.key} className="text-right">
+                              {amount > 0 ? (
+                                <span className="text-neutral-900">
+                                  {formatAmount(amount)}
+                                </span>
+                              ) : (
+                                <span className="text-neutral-400">—</span>
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-right font-semibold bg-neutral-50">
+                          {formatAmount(rowTotal)} {getCurrencySymbol(selectedCurrency)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  
+                  {/* Строка итогов */}
+                  <TableRow className="bg-emerald-50 font-bold">
+                    <TableCell className="sticky left-0 bg-emerald-50 z-10">
+                      Итого
+                    </TableCell>
+                    {monthYearColumns.map(month => {
+                      const total = tableData.columnTotals.get(month.key) || 0;
+                      return (
+                        <TableCell key={month.key} className="text-right">
+                          {formatAmount(total)}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="text-right bg-emerald-100">
+                      {formatAmount(tableData.grandTotal)} {getCurrencySymbol(selectedCurrency)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="py-12 text-center text-neutral-500">

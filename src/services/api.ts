@@ -37,9 +37,9 @@ export const expenseAPI = {
   },
 
   // Получить расходы по периоду
-  getByPeriod: async (startDate: string, endDate: string) => {
-    const response = await axiosInstance.get<Expense[]>('/expenses/period/', {
-      params: { startDate, endDate },
+  getByPeriod: async (date_from: string, date_to: string) => {
+    const response = await axiosInstance.get<Expense[]>('/expenses/', {
+      params: { date_from, date_to },
     });
     return response.data;
   },

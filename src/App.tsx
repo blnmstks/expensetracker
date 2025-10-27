@@ -20,13 +20,23 @@ import { expenseAPI, authAPI } from "./services/api";
 import ErrorBoundary, { SectionFallback } from "./components/ErrorBoundary";
 
 export type Expense = {
-  id: string;
+  id: number;
+  category_color: string;
+  category_name: string;
   amount: number;
   currency: number;
   category: number;
   date: string;
-  month: string;
+  month: number;
   comment?: string;
+  currency_code: string;
+  currency_symbol: number;
+  year: number;
+  category_icon: string;
+
+//   amount
+// : 
+// "22.00"
 };
 
 export type Category = {
@@ -92,7 +102,7 @@ export default function App() {
 
       const newExpense: Expense = {
         ...createdExpense,
-        id: createdExpense.id?.toString(),
+        id: createdExpense.id
       };
       setExpenses([newExpense, ...expenses]);
       
@@ -103,7 +113,7 @@ export default function App() {
   }
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = (id: number) => {
     setExpenses(expenses.filter((exp) => exp.id !== id));
   };
 
@@ -267,7 +277,6 @@ export default function App() {
           {activeTab === "analytics" && (
             <ErrorBoundary fallback={<SectionFallback name="Аналитика" />}>
                 <Analytics
-                  expenses={expenses}
                   currencySettings={currencySettings}
                 />
             </ErrorBoundary>
@@ -275,7 +284,6 @@ export default function App() {
           )}
           {activeTab === "history" && (
             <History
-              expenses={expenses}
               currencySettings={currencySettings}
             />
           )}
