@@ -55,7 +55,6 @@ export function History({ currencySettings }: HistoryProps) {
       <div>
         <h2 className="text-neutral-900 mb-4">История расходов</h2>
       </div>
-
       {expenses.length > 0 ? (
         <Card className="border-neutral-100 bg-white/90 shadow-lg ring-1 ring-black/5 backdrop-blur">
           <CardHeader className="px-4 sm:px-6 pt-5 sm:pt-6">
@@ -78,7 +77,7 @@ export function History({ currencySettings }: HistoryProps) {
                         className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold text-neutral-700"
                         style={{ backgroundColor: expense.category_color + '20' }}
                       >
-                        {expense.category_name?.[0]?.toUpperCase() || '•'}
+                        {expense.category_icon}
                       </div>
                       <div className="min-w-0">
                         <div className="text-neutral-900 font-medium">{expense.category_name}</div>
@@ -89,15 +88,6 @@ export function History({ currencySettings }: HistoryProps) {
                     </div>
 
                     <div className="flex flex-wrap gap-4 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
-                      <div>
-                        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                          Категория
-                        </div>
-                        <div className="text-neutral-900 font-medium">
-                          {expense.category_name}
-                        </div>
-                      </div>
-
                       {/* Amount in Original Currency */}
                       <div>
                         <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -112,21 +102,18 @@ export function History({ currencySettings }: HistoryProps) {
                           </div>
                         )}
                       </div>
+                      <div className="min-w-0 text-sm text-neutral-600">
+                        {expense.comment && (
+                          <>
+                            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                              Комментарий
+                            </div>
+                            <div className="text-neutral-700 line-clamp-3">{expense.comment}</div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Comment */}
-                    <div className="min-w-0 text-sm text-neutral-600">
-                      {expense.comment ? (
-                        <>
-                          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                            Комментарий
-                          </div>
-                          <div className="text-neutral-700 line-clamp-3">{expense.comment}</div>
-                        </>
-                      ) : (
-                        <div className="italic text-neutral-400">Без комментария</div>
-                      )}
-                    </div>
                     <button
                       type="button"
                       aria-label="Удалить расход"

@@ -32,6 +32,7 @@ export type Expense = {
   currency_code: string;
   currency_symbol: number;
   year: number;
+  category_icon: string;
 
 //   amount
 // : 
