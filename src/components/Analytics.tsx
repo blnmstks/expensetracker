@@ -157,11 +157,11 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
   };
 
   return (
-    <div className="max-w-full mx-auto space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-neutral-900">Аналитика расходов</h2>
+    <div className="max-w-full mx-auto space-y-6 md:p-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">Аналитика расходов</h2>
         
-        <div className="w-48">
+        <div className="w-full sm:w-48">
           <Select 
             value={String(selectedCurrency)} 
             onValueChange={(value) => setSelectedCurrency(Number(value))}
