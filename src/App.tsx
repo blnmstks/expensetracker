@@ -277,7 +277,6 @@ export default function App() {
           {activeTab === "analytics" && (
             <ErrorBoundary fallback={<SectionFallback name="Аналитика" />}>
                 <Analytics
-                  expenses={expenses}
                   currencySettings={currencySettings}
                 />
             </ErrorBoundary>
