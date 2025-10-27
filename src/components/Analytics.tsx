@@ -1,12 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useCategories, useExpenses } from '../store/categories';
+import { Select, Card } from 'antd';
 
 interface AnalyticsProps {
   currencySettings: CurrencySettings;
@@ -164,9 +162,9 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         <div className="w-full sm:w-48">
           <Select 
             value={String(selectedCurrency)} 
-            onValueChange={(value) => setSelectedCurrency(Number(value))}
+            // onValueChange={(value) => setSelectedCurrency(Number(value))}
           >
-            <SelectTrigger>
+            {/* <SelectTrigger>
               <SelectValue placeholder="Выберите валюту" />
             </SelectTrigger>
             <SelectContent>
@@ -175,14 +173,14 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
                   {currency.symbol} {currency.code}
                 </SelectItem>
               ))}
-            </SelectContent>
+            </SelectContent> */}
           </Select>
         </div>
       </div>
 
       {expenses.length > 0 ? (
         <Card>
-          <CardHeader>
+          {/* <CardHeader>
             <CardTitle>Расходы по категориям и месяцам</CardTitle>
           </CardHeader>
           <CardContent>
@@ -246,7 +244,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
                   })}
                   
                   {/* Строка итогов */}
-                  <TableRow className="bg-emerald-50 font-bold">
+                  {/* <TableRow className="bg-emerald-50 font-bold">
                     <TableCell className="sticky left-0 bg-emerald-50 z-10">
                       Итого
                     </TableCell>
@@ -264,14 +262,14 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
                   </TableRow>
                 </TableBody>
               </Table>
-            </div>
-          </CardContent>
+            </div> */}
+          {/* </CardContent> */}
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-12 text-center text-neutral-500">
+          {/* <CardContent className="py-12 text-center text-neutral-500"> */}
             Нет данных для отображения. Добавьте расходы, чтобы увидеть аналитику.
-          </CardContent>
+          {/* </CardContent> */}
         </Card>
       )}
     </div>

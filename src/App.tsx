@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { Login } from "./components/Login";
-import { Toaster } from "./components/ui/sonner";
-import { toast } from "sonner";
 import { expenseAPI, authAPI } from "./services/api";
 import { ConfigProvider } from "antd";
 import ruRU from "antd/locale/ru_RU";
 import { createAppRouter } from "./routes";
+import { message } from "antd";
 
 export type Expense = {
   id: number;
@@ -105,7 +104,7 @@ export default function App() {
   // Обработчик успешного входа
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
-    toast.success('Добро пожаловать!');
+    message.success('Добро пожаловать!');
   };
 
   // Обработчик выхода
@@ -114,10 +113,10 @@ export default function App() {
       await authAPI.logout();
       localStorage.setItem('auth_token', '');
       setIsAuthenticated(false);
-      toast.success('Вы вышли из системы');
+      message.success('Вы вышли из системы');
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error('Ошибка при выходе');
+      message.error('Ошибка при выходе');
     }
   };
 
@@ -125,7 +124,6 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <ConfigProvider locale={ruRU}>
-        <Toaster />
         <Login onLoginSuccess={handleLoginSuccess} />
       </ConfigProvider>
     );
@@ -151,7 +149,6 @@ export default function App() {
         },
       }}
     >
-      <Toaster />
       <RouterProvider router={router} />
     </ConfigProvider>
   );

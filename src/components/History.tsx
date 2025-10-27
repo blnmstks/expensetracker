@@ -1,12 +1,10 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useExpenses } from '../store/categories';
+import { Card, message } from 'antd';
 
 interface HistoryProps {
   currencySettings: CurrencySettings;
@@ -41,10 +39,10 @@ export function History({ currencySettings }: HistoryProps) {
     try {
       setDeletingId(expenseId);
       await deleteExpense(expenseId);
-      toast.success('Расход удален');
+      message.success('Расход удален');
     } catch (error) {
       console.error('Failed to delete expense', error);
-      toast.error('Не удалось удалить расход');
+      message.error('Не удалось удалить расход');
     } finally {
       setDeletingId(null);
     }
@@ -57,10 +55,6 @@ export function History({ currencySettings }: HistoryProps) {
       </div>
       {expenses.length > 0 ? (
         <Card className="border-neutral-100 bg-white/90 shadow-lg ring-1 ring-black/5 backdrop-blur">
-          <CardHeader className="px-4 sm:px-6 pt-5 sm:pt-6">
-            <CardTitle className="text-lg font-semibold text-neutral-900">Все операции</CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 sm:px-6 pb-5 sm:pb-6">
             <div className="space-y-3 sm:space-y-4">
               {expenses.map((expense) => {
                 const expenseCurrency = expense.currency_symbol || currencySettings.defaultCurrency;
@@ -121,19 +115,16 @@ export function History({ currencySettings }: HistoryProps) {
                       onClick={() => handleDelete(expense.id)}
                       disabled={deletingId === expense.id}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      delete
                     </button>
                   </div>
                 );
               })}
             </div>
-          </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-12 text-center text-neutral-500">
-            История расходов пуста. Добавьте расходы, чтобы увидеть их здесь.
-          </CardContent>
+          История расходов пуста. Добавьте расходы, чтобы увидеть их здесь.
         </Card>
       )}
     </div>

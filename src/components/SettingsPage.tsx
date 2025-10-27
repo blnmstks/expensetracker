@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit, Download, Upload } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Alert, AlertDescription } from './ui/alert';
-import { Switch } from './ui/switch';
-import { Checkbox } from './ui/checkbox';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { cn } from './ui/utils';
+import { 
+  Card, 
+  Button, 
+  Input, 
+  Modal, 
+  Alert, 
+  Switch, 
+  Checkbox, 
+  Select, 
+  Typography,
+  Space,
+  Divider,
+  message,
+  Upload as AntUpload
+} from 'antd';
+import { 
+  PlusOutlined, 
+  DeleteOutlined, 
+  EditOutlined, 
+  DownloadOutlined, 
+  UploadOutlined 
+} from '@ant-design/icons';
 import type { Category, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useCategories } from '../store/categories';
+
+const { Title, Text } = Typography;
 
 interface SettingsPageProps {
   currencySettings: CurrencySettings;
@@ -126,29 +138,29 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
-  const handleDefaultCurrencyChange = (currencyCode: string) => {
-    // const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyCode)
-    //   ? currencySettings.activeCurrencies
-    //   : [...currencySettings.activeCurrencies, currencyCode];
+  const handleDefaultCurrencyChange = (currencyId: number) => {
+    const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyId)
+      ? currencySettings.activeCurrencies
+      : [...currencySettings.activeCurrencies, currencyId];
 
     onUpdateCurrencySettings({
       ...currencySettings,
-      // defaultCurrency: currencyCode,
-      // activeCurrencies: newActiveCurrencies,
+      defaultCurrency: currencyId,
+      activeCurrencies: newActiveCurrencies,
     });
     setDefaultCurrencyOpen(false);
   };
 
-  const handleActiveCurrencyToggle = (currencyCode: string, checked: boolean) => {
-    // if (currencyCode === currencySettings.defaultCurrency) return; // Can't deselect default
+  const handleActiveCurrencyToggle = (currencyId: number, checked: boolean) => {
+    if (currencyId === currencySettings.defaultCurrency) return; // Can't deselect default
 
-    // const newActiveCurrencies = checked
-    //   ? [...currencySettings.activeCurrencies, currencyCode]
-    //   : currencySettings.activeCurrencies.filter(c => c !== currencyCode);
+    const newActiveCurrencies = checked
+      ? [...currencySettings.activeCurrencies, currencyId]
+      : currencySettings.activeCurrencies.filter(c => c !== currencyId);
 
     onUpdateCurrencySettings({
       ...currencySettings,
-      // activeCurrencies: newActiveCurrencies,
+      activeCurrencies: newActiveCurrencies,
     });
   };
 
@@ -185,378 +197,359 @@ export function SettingsPage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-neutral-900 mb-4">Настройки</h2>
-      </div>
+    <div style={{ maxWidth: '1024px', margin: '0 auto', padding: '24px' }}>
+      <Title level={2} style={{ marginBottom: '24px' }}>Настройки</Title>
 
       {/* Currency Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Дефолтная валюта</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Popover open={defaultCurrencyOpen} onOpenChange={setDefaultCurrencyOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                <span>
-                  {/* {AVAILABLE_CURRENCIES.find(c => c.code === currencySettings.defaultCurrency)?.name} ({currencySettings.defaultCurrency}) */}
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Поиск валюты..." />
-                <CommandList>
-                  <CommandEmpty>Валюта не найдена.</CommandEmpty>
-                  <CommandGroup>
-                    {AVAILABLE_CURRENCIES.map((currency) => (
-                      <CommandItem
-                        key={currency.code}
-                        value={`${currency.code} ${currency.name}`}
-                        onSelect={() => handleDefaultCurrencyChange(currency.code)}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{currency.name}</span>
-                          <span className="text-neutral-500">{currency.code}</span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </CardContent>
+      <Card style={{ marginBottom: '24px' }} title="Дефолтная валюта">
+        <Select
+          style={{ width: '100%' }}
+          value={currencySettings.defaultCurrency}
+          onChange={handleDefaultCurrencyChange}
+          placeholder="Выберите валюту"
+          showSearch
+          optionFilterProp="children"
+        >
+          {AVAILABLE_CURRENCIES.map((currency) => (
+            <Select.Option key={currency.id} value={currency.id}>
+              {currency.name} ({currency.code})
+            </Select.Option>
+          ))}
+        </Select>
       </Card>
 
       {/* Active Currencies */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Активные валюты</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {/* {AVAILABLE_CURRENCIES.filter(c => 
-              currencySettings.activeCurrencies.includes(c.code) || c.code === currencySettings.defaultCurrency
-            ).map((currency) => (
-              <div key={currency.code} className="flex items-center justify-between p-3 rounded-lg border border-neutral-200">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{currency.symbol}</span>
-                  <div>
-                    <div className="text-neutral-900">{currency.code}</div>
-                    <div className="text-neutral-500 text-sm">{currency.name}</div>
-                  </div>
+      <Card style={{ marginBottom: '24px' }} title="Активные валюты">
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {AVAILABLE_CURRENCIES.filter(c => 
+            currencySettings.activeCurrencies.includes(c.id) || c.id === currencySettings.defaultCurrency
+          ).map((currency) => (
+            <div key={currency.id} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '12px', 
+              border: '1px solid #d9d9d9', 
+              borderRadius: '8px' 
+            }}>
+              <Space>
+                <span style={{ fontSize: '20px' }}>{currency.symbol}</span>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{currency.code}</div>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>{currency.name}</Text>
                 </div>
-                <Checkbox
-                  checked={currencySettings.activeCurrencies.includes(currency.code)}
-                  onCheckedChange={(checked) => handleActiveCurrencyToggle(currency.code, checked as boolean)}
-                  disabled={currency.code === currencySettings.defaultCurrency}
-                />
-              </div>
-            ))} */}
-            
-            <div className="pt-2">
-              <Label className="text-sm text-neutral-500">Добавить другие валюты:</Label>
-              <div className="mt-2 max-h-40 overflow-y-auto space-y-2">
-                {/* {AVAILABLE_CURRENCIES.filter(c => 
-                  !currencySettings.activeCurrencies.includes(c.code) && c.code !== currencySettings.defaultCurrency
+              </Space>
+              <Checkbox
+                checked={currencySettings.activeCurrencies.includes(currency.id)}
+                onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
+                disabled={currency.id === currencySettings.defaultCurrency}
+              />
+            </div>
+          ))}
+          
+          <div style={{ paddingTop: '8px' }}>
+            <Text type="secondary" style={{ fontSize: '12px' }}>Добавить другие валюты:</Text>
+            <div style={{ marginTop: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+              <Space direction="vertical" style={{ width: '100%' }} size="small">
+                {AVAILABLE_CURRENCIES.filter(c => 
+                  !currencySettings.activeCurrencies.includes(c.id) && c.id !== currencySettings.defaultCurrency
                 ).map((currency) => (
-                  <div key={currency.code} className="flex items-center justify-between p-2 rounded hover:bg-neutral-50">
-                    <div className="flex items-center gap-2">
+                  <div key={currency.id} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '8px', 
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}>
+                    <Space size="small">
                       <span>{currency.symbol}</span>
-                      <span className="text-sm text-neutral-700">{currency.code} - {currency.name}</span>
-                    </div>
+                      <Text style={{ fontSize: '12px' }}>{currency.code} - {currency.name}</Text>
+                    </Space>
                     <Checkbox
                       checked={false}
-                      onCheckedChange={(checked) => handleActiveCurrencyToggle(currency.code, checked as boolean)}
+                      onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
                     />
                   </div>
-                ))} */}
-              </div>
+                ))}
+              </Space>
             </div>
           </div>
-        </CardContent>
+        </Space>
       </Card>
 
       {/* Exchange Rates */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Курсы валют</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 rounded-lg border border-neutral-200">
+      <Card style={{ marginBottom: '24px' }} title="Курсы валют">
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            padding: '12px', 
+            border: '1px solid #d9d9d9', 
+            borderRadius: '8px' 
+          }}>
             <div>
-              <Label>Синхронизация с курсом Google</Label>
-              <p className="text-sm text-neutral-500 mt-1">
-                Автоматически обновлять курсы валют
-              </p>
+              <Text strong>Синхронизация с курсом Google</Text>
+              <div>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Автоматически обновлять курсы валют
+                </Text>
+              </div>
             </div>
             <Switch
               checked={currencySettings.syncWithGoogle}
-              onCheckedChange={handleSyncToggle}
+              onChange={handleSyncToggle}
             />
           </div>
 
           {currencySettings.syncWithGoogle && (
-            <div className="space-y-2">
-              <Label htmlFor="adjustment">Корректировка курса</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-neutral-500">+</span>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Text>Корректировка курса</Text>
+              <Space>
+                <Text type="secondary">+</Text>
                 <Input
-                  id="adjustment"
                   type="number"
-                  min="0"
-                  max="9"
+                  min={0}
+                  max={9}
                   value={currencySettings.googleRateAdjustment}
                   onChange={(e) => handleAdjustmentChange(e.target.value)}
-                  className="w-20"
+                  style={{ width: '80px' }}
                 />
-                <span className="text-neutral-500">%</span>
-              </div>
-            </div>
+                <Text type="secondary">%</Text>
+              </Space>
+            </Space>
           )}
 
           {!currencySettings.syncWithGoogle && (
-            <div className="space-y-3">
-              <Label>Ручной ввод курсов (относительно {currencySettings.defaultCurrency})</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {currencySettings.activeCurrencies.map((currCode) => (
-                  <div key={currCode} className="space-y-1">
-                    <Label htmlFor={`rate-${currCode}`} className="text-sm">
-                      {currCode}
-                    </Label>
-                    <Input
-                      id={`rate-${currCode}`}
-                      type="number"
-                      step="0.01"
-                      value={manualRates[currCode] || 1}
-                      // onChange={(e) => handleManualRateChange(currCode, e.target.value)}
-                      disabled={currCode === currencySettings.defaultCurrency}
-                    />
-                  </div>
-                ))}
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Text>Ручной ввод курсов (относительно {AVAILABLE_CURRENCIES.find(c => c.id === currencySettings.defaultCurrency)?.code})</Text>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                {currencySettings.activeCurrencies.map((currId) => {
+                  const currency = AVAILABLE_CURRENCIES.find(c => c.id === currId);
+                  if (!currency) return null;
+                  return (
+                    <Space key={currId} direction="vertical" size="small">
+                      <Text style={{ fontSize: '12px' }}>{currency.code}</Text>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={manualRates[currency.code] || 1}
+                        onChange={(e) => handleManualRateChange(currency.code, e.target.value)}
+                        disabled={currId === currencySettings.defaultCurrency}
+                      />
+                    </Space>
+                  );
+                })}
               </div>
               <Button 
+                type="primary"
                 onClick={handleSaveManualRates}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                style={{ width: '100%', backgroundColor: '#52c41a', borderColor: '#52c41a' }}
               >
                 Сохранить курсы
               </Button>
-            </div>
+            </Space>
           )}
-        </CardContent>
+        </Space>
       </Card>
 
       {/* Categories Management */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Управление категориями</CardTitle>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Добавить
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Новая категория</DialogTitle>
-                <DialogDescription>
-                  Создайте новую категорию для классификации ваших расходов.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>Название</Label>
-                  <Input
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Название категории"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Иконка</Label>
-                  <div className="grid grid-cols-8 gap-2">
-                    {EMOJI_OPTIONS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => setNewCategoryIcon(emoji)}
-                        className={`p-2 rounded border-2 transition-colors ${
-                          newCategoryIcon === emoji
-                            ? 'border-emerald-600 bg-emerald-50'
-                            : 'border-neutral-200 hover:border-neutral-300'
-                        }`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Цвет</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {COLOR_OPTIONS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setNewCategoryColor(color)}
-                        className={`h-10 rounded border-2 transition-colors ${
-                          newCategoryColor === color
-                            ? 'border-neutral-900'
-                            : 'border-neutral-200'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <Button onClick={handleAddCategory} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  Добавить категорию
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {categories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 hover:bg-neutral-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: category.color + '20' }}
-                  >
-                    <span>{category.icon}</span>
-                  </div>
-                  <span className="text-neutral-900">{category.name}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Редактировать категорию</DialogTitle>
-                        <DialogDescription>
-                          Измените название, иконку или цвет категории.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 mt-4">
-                        <div className="space-y-2">
-                          <Label>Название</Label>
-                          <Input
-                            value={newCategoryName}
-                            onChange={(e) => setNewCategoryName(e.target.value)}
-                            placeholder="Название категории"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Иконка</Label>
-                          <div className="grid grid-cols-8 gap-2">
-                            {EMOJI_OPTIONS.map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => setNewCategoryIcon(emoji)}
-                                className={`p-2 rounded border-2 transition-colors ${
-                                  newCategoryIcon === emoji
-                                    ? 'border-emerald-600 bg-emerald-50'
-                                    : 'border-neutral-200 hover:border-neutral-300'
-                                }`}
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Цвет</Label>
-                          <div className="grid grid-cols-5 gap-2">
-                            {COLOR_OPTIONS.map((color) => (
-                              <button
-                                key={color}
-                                type="button"
-                                onClick={() => setNewCategoryColor(color)}
-                                className={`h-10 rounded border-2 transition-colors ${
-                                  newCategoryColor === color
-                                    ? 'border-neutral-900'
-                                    : 'border-neutral-200'
-                                }`}
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <Button onClick={handleUpdateCategory} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                          Сохранить изменения
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    // onClick={() => onDeleteCategory(category.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+      <Card 
+        style={{ marginBottom: '24px' }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Управление категориями</span>
+            <Button 
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setIsAddDialogOpen(true)}
+              style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+            >
+              Добавить
+            </Button>
           </div>
-        </CardContent>
+        }
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          {categories.map((category) => (
+            <div
+              key={category.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '8px',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              <Space>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: category.color + '20'
+                  }}
+                >
+                  <span>{category.icon}</span>
+                </div>
+                <Text>{category.name}</Text>
+              </Space>
+              <Space size="small">
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    handleEditCategory(category);
+                    setIsAddDialogOpen(true);
+                  }}
+                />
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  // onClick={() => onDeleteCategory(category.id)}
+                />
+              </Space>
+            </div>
+          ))}
+        </Space>
       </Card>
 
+      {/* Add/Edit Category Modal */}
+      <Modal
+        title={editingCategory ? 'Редактировать категорию' : 'Новая категория'}
+        open={isAddDialogOpen}
+        onCancel={() => {
+          setIsAddDialogOpen(false);
+          setEditingCategory(null);
+          setNewCategoryName('');
+          setNewCategoryIcon('📦');
+          setNewCategoryColor('#10b981');
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => {
+            setIsAddDialogOpen(false);
+            setEditingCategory(null);
+          }}>
+            Отмена
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
+            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+          >
+            {editingCategory ? 'Сохранить изменения' : 'Добавить категорию'}
+          </Button>
+        ]}
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <div>
+            <Text>Название</Text>
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Название категории"
+              style={{ marginTop: '8px' }}
+            />
+          </div>
+          
+          <div>
+            <Text>Иконка</Text>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(8, 1fr)', 
+              gap: '8px',
+              marginTop: '8px'
+            }}>
+              {EMOJI_OPTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setNewCategoryIcon(emoji)}
+                  style={{
+                    padding: '8px',
+                    border: `2px solid ${newCategoryIcon === emoji ? '#52c41a' : '#d9d9d9'}`,
+                    borderRadius: '4px',
+                    backgroundColor: newCategoryIcon === emoji ? '#f6ffed' : 'white',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <Text>Цвет</Text>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(5, 1fr)', 
+              gap: '8px',
+              marginTop: '8px'
+            }}>
+              {COLOR_OPTIONS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setNewCategoryColor(color)}
+                  style={{
+                    height: '40px',
+                    border: `2px solid ${newCategoryColor === color ? '#000' : '#d9d9d9'}`,
+                    borderRadius: '4px',
+                    backgroundColor: color,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </Space>
+      </Modal>
+
       {/* Data Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Управление данными</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+      <Card title="Управление данными">
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+          <Space style={{ width: '100%' }} size="middle">
             <Button 
-              variant="outline" 
-              className="flex-1"
+              icon={<DownloadOutlined />}
               onClick={handleExportData}
+              style={{ flex: 1 }}
             >
-              <Download className="w-4 h-4 mr-2" />
               Экспорт данных
             </Button>
             <Button 
-              variant="outline" 
-              className="flex-1"
+              icon={<UploadOutlined />}
               onClick={() => document.getElementById('import-file')?.click()}
+              style={{ flex: 1 }}
             >
-              <Upload className="w-4 h-4 mr-2" />
               Импорт данных
               <input
                 id="import-file"
                 type="file"
                 accept=".json"
-                className="hidden"
+                style={{ display: 'none' }}
                 onChange={handleImportData}
               />
             </Button>
-          </div>
-          <Alert>
-            <AlertDescription>
-              Экспорт сохранит все ваши данные в JSON файл. Импорт восстановит данные из ранее сохранённого файла.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
+          </Space>
+          <Alert
+            message="Экспорт сохранит все ваши данные в JSON файл. Импорт восстановит данные из ранее сохранённого файла."
+            type="info"
+            showIcon
+          />
+        </Space>
       </Card>
     </div>
   );
