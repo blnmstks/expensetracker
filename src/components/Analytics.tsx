@@ -6,7 +6,6 @@ import { AVAILABLE_CURRENCIES } from '../App';
 import { useCategories, useExpenses } from '../store/categories';
 import { Select, Card, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import styles from './Analytics.module.css';
 
 interface AnalyticsProps {
   currencySettings: CurrencySettings;
@@ -133,8 +132,8 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         fixed: 'left',
         width: 200,
         render: (_, record) => (
-          <span className={styles.categoryCell}>
-            <span className={styles.categoryIcon}>{record.categoryIcon}</span>
+          <span>
+            <span>{record.categoryIcon}</span>
             {record.categoryName}
           </span>
         ),
@@ -148,7 +147,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
       align: 'right',
       render: (value?: number) => {
         if (!value || value <= 0) {
-          return <span className={styles.muted}>—</span>;
+          return <span>—</span>;
         }
 
         return `${formatAmount(value)} ${currencySymbol}`;
@@ -191,7 +190,6 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
 
       <Card>
         <Table<DataType>
-          className={styles.customTable}
           columns={columns}
           dataSource={dataSource}
           pagination={false}

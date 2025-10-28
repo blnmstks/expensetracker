@@ -77,7 +77,7 @@ console.log(expenses);
                       <div className="min-w-0">
                         <div className="text-neutral-900 font-medium">{expense.category_name}</div>
                         <div className="text-neutral-500 text-sm">
-                          {format(new Date(expense.date), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                          {format(new Date(expense.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                         </div>
                       </div>
                     </div>
