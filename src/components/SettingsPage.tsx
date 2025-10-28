@@ -21,9 +21,9 @@ import {
   DownloadOutlined, 
   UploadOutlined 
 } from '@ant-design/icons';
-import type { Category, CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store/categories';
+import { useCategories } from '../store';
+import { Category, CurrencySettings } from '../types';
 
 const { Title, Text } = Typography;
 

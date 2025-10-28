@@ -1,11 +1,11 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useEffect, useState } from 'react';
-import { useExpenses } from '../store/categories';
+import { useExpenses } from '../store';
 import { Card, message } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
+import { CurrencySettings } from '../types';
 
 interface HistoryProps {
   currencySettings: CurrencySettings;

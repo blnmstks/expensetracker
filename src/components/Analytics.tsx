@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories, useExpenses } from '../store/categories';
+import { useCategories, useExpenses } from '../store';
 import { Select, Card, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { CurrencySettings } from '../types';
 
 interface AnalyticsProps {
   currencySettings: CurrencySettings;

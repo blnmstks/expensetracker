@@ -18,10 +18,9 @@ import {
   DollarOutlined, 
   MoreOutlined 
 } from '@ant-design/icons';
-import type { Expense, CurrencySettings } from '../App';
-import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store/categories';
+import { useCategories, useCurrency } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
+import { Currency, CurrencySettings, Expense } from '../types';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -35,19 +34,15 @@ interface AddExpenseProps {
 
 export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(currencySettings.defaultCurrency);
+  const [currency, setCurrency] = useState<Currency>({id: 1, code: 'USD', symbol: '$', name: 'US Dollar'});
   const [category, setCategory] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
   const { categories, fetchCategories } = useCategories();
-  
-  // Get quick access currencies (first 3 active currencies)
-  const quickCurrencies = currencySettings.activeCurrencies.slice(0, 3);
+  const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
+
   const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
 
-  const getCurrencySymbol = (code: number) => {
-    return AVAILABLE_CURRENCIES.find(c => c.id === code)?.symbol || code;
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,11 +63,10 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
     }
 
     const selectedCategory = getCategoryById(categoryId);
-    const selectedCurrency = AVAILABLE_CURRENCIES.find(c => c.id === currency);
 
     onAddExpense({
       amount: numAmount,
-      currency,
+      currency: currency.id,
       category: categoryId,
       date: date.format('YYYY-MM-DD'),
       month: parseInt(date.format('YYYYMM')),
@@ -81,10 +75,10 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       category_color: selectedCategory?.color || '#2078F3',
       category_name: selectedCategory?.name || '',
       category_icon: selectedCategory?.icon || '📦',
-      currency_code: selectedCurrency?.code || 'USD',
-      currency_symbol: currency,
+      currency_code: currency?.code,
+      currency_symbol: currency?.id,
     });
-    message.success(`Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)}`);
+    message.success(`Вы потратили ${numAmount.toFixed(2)} ${currency?.symbol}`);
 
     setAmount('');
     setCategory(categoryId);
@@ -98,6 +92,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
 
   useEffect(() => {
     fetchCategories();
+    fetchCurrency();
   }, []);
 
   useEffect(() => {
@@ -129,20 +124,20 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                   size="large"
                 />
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {quickCurrencies.map((curr) => (
+                  {fetchedCurrencies.map((curr) => (
                     <Button
-                      key={curr}
-                      type={currency === curr ? 'primary' : 'default'}
-                      onClick={() => setCurrency(curr)}
+                      key={curr.id}
+                      type={currency?.id === curr.id ? 'primary' : 'default'}
+                      onClick={() => setCurrency({id: curr.id, code: curr.code, symbol: curr.symbol, name: curr.name})}
                       size="large"
                       style={{
                         minWidth: '48px',
-                        ...(currency === curr
+                        ...(currency?.id === curr.id
                           ? { backgroundColor: '#2078F3', borderColor: '#2078F3' }
                           : {}),
                       }}
                     >
-                      {getCurrencySymbol(curr)}
+                      {curr.symbol}
                     </Button>
                   ))}
                   {hasMoreCurrencies && (
@@ -150,8 +145,8 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                       menu={{
                         items: currencySettings.activeCurrencies.map((curr) => ({
                           key: curr,
-                          label: `${getCurrencySymbol(curr)} ${AVAILABLE_CURRENCIES.find(c => c.id === curr)?.code}`,
-                          onClick: () => setCurrency(curr),
+                          // label: `${getCurrencySymbol(curr)} ${AVAILABLE_CURRENCIES.find(c => c.id === curr)?.code}`,
+                          // onClick: () => setCurrency(curr),
                         })),
                       }}
                     >
@@ -271,7 +266,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                       )}
                     </div>
                     <div style={{ marginRight: '8px', fontWeight: 500 }}>
-                      {expense.amount.toLocaleString('ru-RU')} {getCurrencySymbol(expCurrency)}
+                      {/* {expense.amount.toLocaleString('ru-RU')} {getCurrencySymbol(expCurrency)} */}
                     </div>
                     <Button
                       type="text"
