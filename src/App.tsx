@@ -144,7 +144,7 @@ export default function App() {
       locale={ruRU}
       theme={{
         token: {
-          colorPrimary: '#10b981',
+          colorPrimary: '#2078F3',
           borderRadius: 8,
         },
       }}

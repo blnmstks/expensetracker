@@ -11,12 +11,12 @@
 
 /* Стили для меню */
 .ant-menu-item-selected {
-  background-color: #d1fae5 !important;
-  color: #059669 !important;
+  background-color: #E8F1FF !important;
+  color: #2078F3 !important;
 }
 
 .ant-menu-item:hover {
-  color: #10b981 !important;
+  color: #2078F3 !important;
 }
 
 /* Адаптивные карточки */
@@ -109,13 +109,13 @@
 
 /* Цветовая схема для успеха */
 .ant-btn-primary {
-  background-color: #10b981;
-  border-color: #10b981;
+  background-color: #2078F3;
+  border-color: #2078F3;
 }
 
 .ant-btn-primary:hover {
-  background-color: #059669;
-  border-color: #059669;
+  background-color: #1C6DE0;
+  border-color: #1C6DE0;
 }
 
 /* Адаптивный контент */
@@ -169,7 +169,7 @@
 }
 
 .mobile-nav-button.active {
-  color: #10b981;
+  color: #2078F3;
 }
 
 .mobile-nav-button:not(.active) {

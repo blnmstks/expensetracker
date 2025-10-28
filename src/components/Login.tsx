@@ -129,7 +129,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
         
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '32px' }}>
-          <WalletOutlined style={{ fontSize: '48px', color: '#52c41a', marginRight: '12px' }} />
+          <WalletOutlined style={{ fontSize: '48px', color: '#2078F3', marginRight: '12px' }} />
           <Title level={2} style={{ margin: 0 }}>Трекер расходов</Title>
         </div>
 
@@ -190,7 +190,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                           size="large"
                           loading={loginLoading}
                           block
-                          style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                          style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
                         >
                           Войти
                         </Button>
@@ -294,7 +294,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
                           size="large"
                           loading={registerLoading}
                           block
-                          style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                          style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
                         >
                           Зарегистрироваться
                         </Button>

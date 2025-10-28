@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Grid } from 'antd';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   WalletOutlined,
@@ -8,7 +7,6 @@ import {
   SettingOutlined,
   PlusOutlined,
   LogoutOutlined,
-  MenuOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import type { Expense, CurrencySettings } from '../../App';
@@ -27,7 +25,6 @@ type MenuItem = Required<MenuProps>['items'][number];
 export function MainLayout({
   onLogout,
 }: MainLayoutProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const screens = useBreakpoint();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,13 +36,6 @@ export function MainLayout({
   };
 
   const activeTab = getActiveTab();
-
-  // Закрываем drawer при изменении размера экрана
-  useEffect(() => {
-    if (screens.md) {
-      setDrawerOpen(false);
-    }
-  }, [screens.md]);
 
   const menuItems: MenuItem[] = [
     {
@@ -72,7 +62,6 @@ export function MainLayout({
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
     navigate(`/${e.key}`);
-    setDrawerOpen(false);
   };
 
   const handleNavClick = (key: string) => {
@@ -91,7 +80,7 @@ export function MainLayout({
           borderBottom: '1px solid #f0f0f0',
         }}
       >
-        <WalletOutlined style={{ fontSize: 24, color: '#10b981', marginRight: 12 }} />
+        <WalletOutlined style={{ fontSize: 24, color: '#2078F3', marginRight: 12 }} />
         <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
           Трекер расходов
         </h1>
@@ -157,36 +146,20 @@ export function MainLayout({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
               background: '#fff',
               borderBottom: '1px solid #f0f0f0',
               padding: '0 16px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <WalletOutlined style={{ fontSize: 24, color: '#10b981', marginRight: 12 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <WalletOutlined style={{ fontSize: 24, color: '#2078F3' }} />
               <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
                 Трекер расходов
               </h1>
             </div>
-            <Button
-              type="text"
-              icon={<MenuOutlined />}
-              onClick={() => setDrawerOpen(true)}
-            />
           </Header>
         )}
-
-        {/* Мобильный drawer */}
-        <Drawer
-          placement="left"
-          onClose={() => setDrawerOpen(false)}
-          open={drawerOpen}
-          width={256}
-          styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
-        >
-          {sidebarContent}
-        </Drawer>
 
         {/* Основной контент */}
         <Content

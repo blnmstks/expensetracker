@@ -33,7 +33,7 @@ interface SettingsPageProps {
 }
 
 const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '✈️', '☕', '🍔', '🎬', '💰', '🎵', '🏃', '🐕', '🌳'];
-const COLOR_OPTIONS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#84cc16'];
+const COLOR_OPTIONS = ['#2078F3', '#3b82f6', '#60a5fa', '#1d4ed8', '#38bdf8', '#0ea5e9', '#93c5fd', '#dbeafe', '#1e3a8a', '#312e81'];
 
 export function SettingsPage({ 
   currencySettings,
@@ -43,7 +43,7 @@ export function SettingsPage({
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('📦');
-  const [newCategoryColor, setNewCategoryColor] = useState('#10b981');
+  const [newCategoryColor, setNewCategoryColor] = useState('#2078F3');
   const [defaultCurrencyOpen, setDefaultCurrencyOpen] = useState(false);
   const [manualRates, setManualRates] = useState(currencySettings.exchangeRates);
 
@@ -64,7 +64,7 @@ export function SettingsPage({
 
     setNewCategoryName('');
     setNewCategoryIcon('📦');
-    setNewCategoryColor('#10b981');
+    setNewCategoryColor('#2078F3');
     setIsAddDialogOpen(false);
   };
 
@@ -87,7 +87,7 @@ export function SettingsPage({
     setEditingCategory(null);
     setNewCategoryName('');
     setNewCategoryIcon('📦');
-    setNewCategoryColor('#10b981');
+    setNewCategoryColor('#2078F3');
   };
 
   const handleExportData = () => {
@@ -345,7 +345,7 @@ export function SettingsPage({
               <Button 
                 type="primary"
                 onClick={handleSaveManualRates}
-                style={{ width: '100%', backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                style={{ width: '100%', backgroundColor: '#2078F3', borderColor: '#2078F3' }}
               >
                 Сохранить курсы
               </Button>
@@ -364,7 +364,7 @@ export function SettingsPage({
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsAddDialogOpen(true)}
-              style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+              style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
             >
               Добавить
             </Button>
@@ -412,8 +412,7 @@ export function SettingsPage({
                 />
                 <Button
                   type="text"
-                  danger
-                  icon={<DeleteOutlined />}
+                  icon={<DeleteOutlined style={{ fontSize: 16, color: '#8c8c8c' }} />}
                   // onClick={() => onDeleteCategory(category.id)}
                 />
               </Space>
@@ -431,7 +430,7 @@ export function SettingsPage({
           setEditingCategory(null);
           setNewCategoryName('');
           setNewCategoryIcon('📦');
-          setNewCategoryColor('#10b981');
+          setNewCategoryColor('#2078F3');
         }}
         footer={[
           <Button key="cancel" onClick={() => {
@@ -444,7 +443,7 @@ export function SettingsPage({
             key="submit"
             type="primary"
             onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
-            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+            style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
           >
             {editingCategory ? 'Сохранить изменения' : 'Добавить категорию'}
           </Button>
@@ -476,9 +475,9 @@ export function SettingsPage({
                   onClick={() => setNewCategoryIcon(emoji)}
                   style={{
                     padding: '8px',
-                    border: `2px solid ${newCategoryIcon === emoji ? '#52c41a' : '#d9d9d9'}`,
+                    border: `2px solid ${newCategoryIcon === emoji ? '#2078F3' : '#d9d9d9'}`,
                     borderRadius: '4px',
-                    backgroundColor: newCategoryIcon === emoji ? '#f6ffed' : 'white',
+                    backgroundColor: newCategoryIcon === emoji ? '#E8F1FF' : 'white',
                     cursor: 'pointer',
                     fontSize: '20px',
                     transition: 'all 0.2s'

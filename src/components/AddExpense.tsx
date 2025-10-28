@@ -78,7 +78,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       month: parseInt(date.format('YYYYMM')),
       year: parseInt(date.format('YYYY')),
       comment: comment.trim() || undefined,
-      category_color: selectedCategory?.color || '#10b981',
+      category_color: selectedCategory?.color || '#2078F3',
       category_name: selectedCategory?.name || '',
       category_icon: selectedCategory?.icon || '📦',
       currency_code: selectedCurrency?.code || 'USD',
@@ -118,23 +118,29 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div>
               <Text style={{ display: 'block', marginBottom: '8px' }}>Сумма</Text>
-              <Space.Compact style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px', width: '100%' }}>
                 <Input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  style={{ fontSize: '16px' }}
+                  style={{ fontSize: '16px', flex: 1 }}
                   size="large"
                 />
-                <Space size={4}>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                   {quickCurrencies.map((curr) => (
                     <Button
                       key={curr}
                       type={currency === curr ? 'primary' : 'default'}
                       onClick={() => setCurrency(curr)}
-                      style={currency === curr ? { backgroundColor: '#52c41a', borderColor: '#52c41a' } : {}}
+                      size="large"
+                      style={{
+                        minWidth: '48px',
+                        ...(currency === curr
+                          ? { backgroundColor: '#2078F3', borderColor: '#2078F3' }
+                          : {}),
+                      }}
                     >
                       {getCurrencySymbol(curr)}
                     </Button>
@@ -149,11 +155,15 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                         })),
                       }}
                     >
-                      <Button icon={<MoreOutlined />} />
+                      <Button
+                        icon={<MoreOutlined />}
+                        size="large"
+                        style={{ minWidth: '48px', backgroundColor: '#f5f5f5' }}
+                      />
                     </Dropdown>
                   )}
-                </Space>
-              </Space.Compact>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -197,12 +207,12 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
               />
             </div>
 
-            <Button 
+            <Button
               type="primary"
               htmlType="submit"
               size="large"
               block
-              style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+              style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
             >
               Добавить расход
             </Button>
@@ -265,8 +275,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                     </div>
                     <Button
                       type="text"
-                      danger
-                      icon={<DeleteOutlined />}
+                      icon={<DeleteOutlined style={{ fontSize: 18, color: '#8c8c8c' }} />}
                       onClick={() => onDeleteExpense(expense.id)}
                     />
                   </Space>

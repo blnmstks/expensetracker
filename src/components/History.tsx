@@ -5,6 +5,7 @@ import { AVAILABLE_CURRENCIES } from '../App';
 import { useEffect, useState } from 'react';
 import { useExpenses } from '../store/categories';
 import { Card, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 
 interface HistoryProps {
   currencySettings: CurrencySettings;
@@ -47,7 +48,7 @@ export function History({ currencySettings }: HistoryProps) {
       setDeletingId(null);
     }
   };
-
+console.log(expenses);
   return (
     <div className="max-w-6xl mx-auto space-y-6 px-1 sm:px-0">
       <div>
@@ -111,11 +112,11 @@ export function History({ currencySettings }: HistoryProps) {
                     <button
                       type="button"
                       aria-label="Удалить расход"
-                      className="absolute bottom-4 right-4 p-4 bg-white rounded-lg shadow"
+                      className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:border-neutral-300 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
                       onClick={() => handleDelete(expense.id)}
                       disabled={deletingId === expense.id}
                     >
-                      delete
+                      <DeleteOutlined style={{ fontSize: 18 }} />
                     </button>
                   </div>
                 );
