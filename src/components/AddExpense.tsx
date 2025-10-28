@@ -36,7 +36,7 @@ interface AddExpenseProps {
 export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(currencySettings.defaultCurrency);
-  const [category, setCategory] = useState(1);
+  const [category, setCategory] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
   const { categories, fetchCategories } = useCategories();
@@ -61,13 +61,19 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       return;
     }
 
-    const selectedCategory = getCategoryById(category);
+    const categoryId = category ?? categories[0]?.id;
+    if (!categoryId) {
+      message.error('Выберите категорию');
+      return;
+    }
+
+    const selectedCategory = getCategoryById(categoryId);
     const selectedCurrency = AVAILABLE_CURRENCIES.find(c => c.id === currency);
 
     onAddExpense({
       amount: numAmount,
       currency,
-      category,
+      category: categoryId,
       date: date.format('YYYY-MM-DD'),
       month: parseInt(date.format('YYYYMM')),
       year: parseInt(date.format('YYYY')),
@@ -81,8 +87,9 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
     message.success(`Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)}`);
 
     setAmount('');
-    setCategory(1);
+    setCategory(categoryId);
     setComment('');
+    fetchCategories();
   };
 
   const getCategoryById = (id: number) => {
@@ -92,6 +99,17 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setCategory((prev) => {
+        if (prev !== null && categories.some((cat) => cat.id === prev)) {
+          return prev;
+        }
+        return categories[0].id;
+      });
+    }
+  }, [categories]);
 
   return (
     <div style={{ maxWidth: '768px', margin: '0 auto' }}>
@@ -140,11 +158,11 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
 
             <div>
               <Text style={{ display: 'block', marginBottom: '8px' }}>Категория</Text>
-              <Select 
-                value={category} 
-                onChange={setCategory}
+              <Select<number>
+                value={category ?? undefined} 
+                onChange={(value) => setCategory(value)}
                 style={{ width: '100%' }}
-                size="large"
+                // size="large"
               >
                 {categories.map((cat) => (
                   <Select.Option key={cat.id} value={cat.id}>

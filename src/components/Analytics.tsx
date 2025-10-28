@@ -4,19 +4,28 @@ import { ru } from 'date-fns/locale';
 import type { CurrencySettings } from '../App';
 import { AVAILABLE_CURRENCIES } from '../App';
 import { useCategories, useExpenses } from '../store/categories';
-import { Select, Card } from 'antd';
+import { Select, Card, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import styles from './Analytics.module.css';
 
 interface AnalyticsProps {
   currencySettings: CurrencySettings;
 }
 
-interface MonthYearKey {
-  month: number;
-  year: number;
+type DataType = {
   key: string;
-  display: string;
-}
+  categoryId: number;
+  categoryName: string;
+  categoryIcon: string;
+  [monthKey: string]: number | string;
+};
 
+const capitalize = (value: string) => {
+  if (!value) {
+    return '';
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
 
 export function Analytics({ currencySettings }: AnalyticsProps) {
   const [selectedCurrency, setSelectedCurrency] = useState<number>(currencySettings.defaultCurrency);
@@ -26,252 +35,174 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
   useEffect(() => {
     fetchCategories();
     fetchExpenses();
-  }, []);
+  }, [fetchCategories, fetchExpenses]);
 
-  // Функция конвертации валют
-  const convertCurrency = (amount: number, fromCurrencyId: number, toCurrencyId: number) => {
+  const convertCurrency = (
+    amount: number,
+    fromCurrencyId: number,
+    toCurrencyId: number,
+  ) => {
     if (fromCurrencyId === toCurrencyId) {
       return amount;
     }
-    
-    const fromCurrency = AVAILABLE_CURRENCIES.find(c => c.id === fromCurrencyId);
-    const toCurrency = AVAILABLE_CURRENCIES.find(c => c.id === toCurrencyId);
-    
-    if (!fromCurrency || !toCurrency) return amount;
-    
+
+    const fromCurrency = AVAILABLE_CURRENCIES.find((c) => c.id === fromCurrencyId);
+    const toCurrency = AVAILABLE_CURRENCIES.find((c) => c.id === toCurrencyId);
+
+    if (!fromCurrency || !toCurrency) {
+      return amount;
+    }
+
     const fromRate = currencySettings.exchangeRates[fromCurrency.code] || 1;
     const toRate = currencySettings.exchangeRates[toCurrency.code] || 1;
-    
-    const inUSD = amount / fromRate;
-    return inUSD * toRate;
+
+    const inUsd = amount / fromRate;
+    return inUsd * toRate;
   };
 
-  // Получаем символ валюты
   const getCurrencySymbol = (currencyId: number) => {
-    return AVAILABLE_CURRENCIES.find(c => c.id === currencyId)?.symbol || '';
+    return AVAILABLE_CURRENCIES.find((c) => c.id === currencyId)?.symbol || '';
   };
 
-  // Получаем уникальные месяцы из расходов (от нового к старому)
-  const monthYearColumns = useMemo((): MonthYearKey[] => {
-    const monthsSet = new Set<string>();
-    
-    expenses.forEach(expense => {
-      const date = new Date(expense.date);
-      const month = date.getMonth() + 1; // 1-12
-      const year = date.getFullYear();
-      const key = `${year}-${String(month).padStart(2, '0')}`;
-      monthsSet.add(key);
-    });
-    
-    const monthsArray = Array.from(monthsSet).map(key => {
-      const [year, month] = key.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return {
-        month: parseInt(month),
-        year: parseInt(year),
-        key,
-        display: format(date, 'MMM yyyy', { locale: ru })
-      };
-    });
-    
-    // Сортируем от нового к старому
-    return monthsArray.sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.month - a.month;
-    });
-  }, [expenses]);
+  const lastMonthRange = useMemo(() => {
+    const current = new Date();
+    const lastMonthEnd = new Date(current.getFullYear(), current.getMonth(), 0);
+    const lastMonthStart = new Date(
+      lastMonthEnd.getFullYear(),
+      lastMonthEnd.getMonth(),
+      1,
+    );
+    const key = `${lastMonthStart.getFullYear()}-${String(
+      lastMonthStart.getMonth() + 1,
+    ).padStart(2, '0')}`;
 
-  // Подсчет расходов по категориям и месяцам
-  const tableData = useMemo(() => {
-    const data = new Map<number, Map<string, number>>();
-    
-    // Инициализируем данные для каждой категории
-    categories.forEach(category => {
-      data.set(category.id, new Map());
-    });
-    
-    // Заполняем данные
-    expenses.forEach(expense => {
-      const date = new Date(expense.date);
-      const month = date.getMonth() + 1;
-      const year = date.getFullYear();
-      const key = `${year}-${String(month).padStart(2, '0')}`;
-      
-      const categoryId = expense.category;
-      const convertedAmount = convertCurrency(expense.amount, expense.currency, selectedCurrency);
-      
-      if (data.has(categoryId)) {
-        const categoryData = data.get(categoryId)!;
-        const currentAmount = categoryData.get(key) || 0;
-        categoryData.set(key, currentAmount + convertedAmount);
-      }
-    });
-    
-    // Подсчитываем итоги по строкам (категориям)
-    const rowTotals = new Map<number, number>();
-    data.forEach((monthData, categoryId) => {
-      let total = 0;
-      monthData.forEach(amount => {
-        total += amount;
-      });
-      rowTotals.set(categoryId, total);
-    });
-    
-    // Подсчитываем итоги по колонкам (месяцам)
-    const columnTotals = new Map<string, number>();
-    monthYearColumns.forEach(month => {
-      let total = 0;
-      data.forEach(categoryData => {
-        total += categoryData.get(month.key) || 0;
-      });
-      columnTotals.set(month.key, total);
-    });
-    
-    // Общий итог
-    let grandTotal = 0;
-    rowTotals.forEach(total => {
-      grandTotal += total;
-    });
-    
-    return { data, rowTotals, columnTotals, grandTotal };
-  }, [expenses, categories, monthYearColumns, selectedCurrency]);
+    const label = capitalize(
+      format(lastMonthStart, 'LLLL yyyy', { locale: ru }),
+    );
 
-  // Сортируем категории по убыванию суммы
-  const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      const totalA = tableData.rowTotals.get(a.id) || 0;
-      const totalB = tableData.rowTotals.get(b.id) || 0;
-      console.log('tabelData.rowTotals', tableData.rowTotals.get(a.id));
-      return totalB - totalA;
-    });
-  }, [categories, tableData.rowTotals]);
+    return {
+      start: lastMonthStart,
+      end: lastMonthEnd,
+      display: label,
+      key,
+    };
+  }, []);
 
-  // Форматирование числа
+  const lastMonthExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      return (
+        expenseDate >= lastMonthRange.start && expenseDate <= lastMonthRange.end
+      );
+    });
+  }, [expenses, lastMonthRange]);
+
+  const aggregatedByCategory = useMemo(() => {
+    const map = new Map<number, number>();
+
+    lastMonthExpenses.forEach((expense) => {
+      const amount = convertCurrency(
+        expense.amount,
+        expense.currency,
+        selectedCurrency,
+      );
+
+      map.set(expense.category, (map.get(expense.category) || 0) + amount);
+    });
+
+    return map;
+  }, [lastMonthExpenses, selectedCurrency, currencySettings]);
+
+  const currencySymbol = getCurrencySymbol(selectedCurrency);
+
   const formatAmount = (amount: number) => {
-    return amount.toLocaleString('ru-RU', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return amount.toLocaleString('ru-RU', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
   };
+
+  const months = useMemo(() => [lastMonthRange], [lastMonthRange]);
+
+  const columns = useMemo<ColumnsType<DataType>>(() => {
+    const baseColumn: ColumnsType<DataType> = [
+      {
+        title: 'Категория',
+        dataIndex: 'categoryName',
+        key: 'category',
+        fixed: 'left',
+        width: 200,
+        render: (_, record) => (
+          <span className={styles.categoryCell}>
+            <span className={styles.categoryIcon}>{record.categoryIcon}</span>
+            {record.categoryName}
+          </span>
+        ),
+      },
+    ];
+
+    const monthColumns: ColumnsType<DataType> = months.map((month) => ({
+      title: month.display,
+      dataIndex: `month-${month.key}`,
+      key: `month-${month.key}`,
+      align: 'right',
+      render: (value?: number) => {
+        if (!value || value <= 0) {
+          return <span className={styles.muted}>—</span>;
+        }
+
+        return `${formatAmount(value)} ${currencySymbol}`;
+      },
+    }));
+
+    return baseColumn.concat(monthColumns);
+  }, [months, currencySymbol]);
+
+  const dataSource = useMemo<DataType[]>(() => {
+    return categories.map((category) => ({
+      key: String(category.id),
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryIcon: category.icon,
+      [`month-${lastMonthRange.key}`]:
+        aggregatedByCategory.get(category.id) || 0,
+    }));
+  }, [aggregatedByCategory, categories, lastMonthRange.key]);
 
   return (
     <div className="max-w-full mx-auto space-y-6 md:p-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">Аналитика расходов</h2>
-        
+        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900">
+          Аналитика расходов
+        </h2>
+
         <div className="w-full sm:w-48">
-          <Select 
-            value={String(selectedCurrency)} 
-            // onValueChange={(value) => setSelectedCurrency(Number(value))}
-          >
-            {/* <SelectTrigger>
-              <SelectValue placeholder="Выберите валюту" />
-            </SelectTrigger>
-            <SelectContent>
-              {AVAILABLE_CURRENCIES.map(currency => (
-                <SelectItem key={currency.id} value={String(currency.id)}>
-                  {currency.symbol} {currency.code}
-                </SelectItem>
-              ))}
-            </SelectContent> */}
-          </Select>
+          <Select
+            value={selectedCurrency}
+            onChange={setSelectedCurrency}
+            options={AVAILABLE_CURRENCIES.map((currency) => ({
+              value: currency.id,
+              label: `${currency.symbol} ${currency.code}`,
+            }))}
+            size="large"
+          />
         </div>
       </div>
 
-      {expenses.length > 0 ? (
-        <Card>
-          {/* <CardHeader>
-            <CardTitle>Расходы по категориям и месяцам</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-bold min-w-[200px] sticky left-0 bg-white z-10">
-                      Категория
-                    </TableHead>
-                    {monthYearColumns.map(month => (
-                      <TableHead key={month.key} className="text-right font-bold min-w-[120px]">
-                        {month.display}
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-right font-bold min-w-[120px] bg-neutral-50">
-                      Итого
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedCategories.map(category => {
-                    const categoryMonthData = tableData.data.get(category.id);
-                    const rowTotal = tableData.rowTotals.get(category.id) || 0;
-                    
-                    // Пропускаем категории без расходов
-                    // if (rowTotal === 0) return null;
-                    
-                    return (
-                      <TableRow key={category.id}>
-                        <TableCell className="font-medium sticky left-0 bg-white z-10">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: category.color + '20' }}
-                            >
-                              <span>{category.icon}</span>
-                            </div>
-                            <span>{category.name}</span>
-                          </div>
-                        </TableCell>
-                        {monthYearColumns.map(month => {
-                          const amount = categoryMonthData?.get(month.key) || 0;
-                          return (
-                            <TableCell key={month.key} className="text-right">
-                              {amount > 0 ? (
-                                <span className="text-neutral-900">
-                                  {formatAmount(amount)}
-                                </span>
-                              ) : (
-                                <span className="text-neutral-400">—</span>
-                              )}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="text-right font-semibold bg-neutral-50">
-                          {formatAmount(rowTotal)} {getCurrencySymbol(selectedCurrency)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  
-                  {/* Строка итогов */}
-                  {/* <TableRow className="bg-emerald-50 font-bold">
-                    <TableCell className="sticky left-0 bg-emerald-50 z-10">
-                      Итого
-                    </TableCell>
-                    {monthYearColumns.map(month => {
-                      const total = tableData.columnTotals.get(month.key) || 0;
-                      return (
-                        <TableCell key={month.key} className="text-right">
-                          {formatAmount(total)}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right bg-emerald-100">
-                      {formatAmount(tableData.grandTotal)} {getCurrencySymbol(selectedCurrency)}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div> */}
-          {/* </CardContent> */}
-        </Card>
-      ) : (
-        <Card>
-          {/* <CardContent className="py-12 text-center text-neutral-500"> */}
-            Нет данных для отображения. Добавьте расходы, чтобы увидеть аналитику.
-          {/* </CardContent> */}
-        </Card>
-      )}
+      <Card>
+        <Table<DataType>
+          className={styles.customTable}
+          columns={columns}
+          dataSource={dataSource}
+          pagination={false}
+          scroll={{ x: 'max-content', y: 55 * 5 }}
+        />
+        {lastMonthExpenses.length === 0 && (
+          <div className="mt-4 text-sm text-neutral-500 text-center">
+            Нет данных за последний месяц. Добавьте расходы, чтобы увидеть аналитику.
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
