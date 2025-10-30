@@ -144,7 +144,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
       const dateB = monthKeyToDate(b);
 
       if (!dateA && !dateB) {
-        return a.localeCompare(b);
+        return b.localeCompare(a);
       }
 
       if (!dateA) {
@@ -155,7 +155,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         return -1;
       }
 
-      return dateA.getTime() - dateB.getTime();
+      return dateB.getTime() - dateA.getTime();
     });
   }, [categoryRows]);
 
