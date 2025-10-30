@@ -1,116 +1,109 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import type { Category, Expense, CurrencySettings } from '../App';
-import { AVAILABLE_CURRENCIES } from '../App';
+import { useEffect, useState } from 'react';
+import { Card, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { CurrencySettings } from '../types';
+import { useExpenses } from '../store';
 
 interface HistoryProps {
-  expenses: Expense[];
-  categories: Category[];
   currencySettings: CurrencySettings;
 }
 
-export function History({ expenses, categories, currencySettings }: HistoryProps) {
-  const getCategoryById = (id: string) => {
-    return categories.find(cat => cat.id === id);
-  };
+export function History({ currencySettings }: HistoryProps) {
+  const { expenses, fetchExpenses, deleteExpense } = useExpenses();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const getCurrencySymbol = (code: string) => {
-    return AVAILABLE_CURRENCIES.find(c => c.code === code)?.symbol || code;
-  };
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
 
-  const convertToDefaultCurrency = (amount: number, fromCurrency: string) => {
-    if (fromCurrency === currencySettings.defaultCurrency) {
-      return amount;
+  const handleDelete = async (expenseId: number) => {
+    try {
+      setDeletingId(expenseId);
+      await deleteExpense(expenseId);
+      message.success('Расход удален');
+    } catch (error) {
+      console.error('Failed to delete expense', error);
+      message.error('Не удалось удалить расход');
+    } finally {
+      setDeletingId(null);
     }
-    
-    const fromRate = currencySettings.exchangeRates[fromCurrency] || 1;
-    const toRate = currencySettings.exchangeRates[currencySettings.defaultCurrency] || 1;
-    
-    // Convert to USD first (base), then to target currency
-    const inUSD = amount / fromRate;
-    return inUSD * toRate;
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 px-1 sm:px-0">
       <div>
         <h2 className="text-neutral-900 mb-4">История расходов</h2>
       </div>
-
       {expenses.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Все операции</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {expenses.map((expense) => {
-                const cat = getCategoryById(expense.category);
-                const expenseCurrency = expense.currency || currencySettings.defaultCurrency;
-                const convertedAmount = convertToDefaultCurrency(expense.amount, expenseCurrency);
-                
-                return (
+        <Card className="border-neutral-100 bg-white/90 shadow-lg ring-1 ring-black/5 backdrop-blur">
+            <div className="space-y-3 sm:space-y-4">
+              {expenses.map((expense) => (
                   <div
                     key={expense.id}
-                    className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border border-neutral-200 hover:bg-neutral-50 transition-colors"
+                    className="relative flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-sm ring-1 ring-black/5 transition-all sm:flex-row sm:items-center"
                   >
                     {/* Icon and Category */}
-                    <div className="flex items-center gap-3 md:w-48">
+                    <div className="flex items-center gap-3 sm:w-60">
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: cat?.color + '20' }}
+                        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold text-neutral-700"
+                        style={{ backgroundColor: expense?.category_detail?.color + '20' }}
                       >
-                        <span className="text-xl">{cat?.icon}</span>
+                        {expense?.category_detail?.icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="text-neutral-900">{cat?.name}</div>
+                      <div className="min-w-0">
+                        <div className="text-neutral-900 font-medium">{expense?.category_detail?.name}</div>
                         <div className="text-neutral-500 text-sm">
-                          {format(new Date(expense.date), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                          {format(new Date(expense.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
                         </div>
                       </div>
                     </div>
 
-                    {/* Amount in Original Currency */}
-                    <div className="md:w-32">
-                      <div className="text-neutral-500 text-sm mb-1">Сумма</div>
-                      <div className="text-neutral-900">
-                        {expense.amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getCurrencySymbol(expenseCurrency)}
+                    <div className="flex flex-wrap gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
+                      {/* Amounts */}
+                      <div className="flex flex-wrap w-full justify-between gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
+                        {expense?.conversions?.map((conv) => (
+                          <div key={conv.currency_code}>
+                            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500 text-center">
+                              {conv?.currency_code}
+                            </div>
+                            <div className="text-neutral-900 text-base font-semibold text-center">
+                              {conv?.amount} {conv?.currency_symbol}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
 
-                    {/* Amount in Default Currency */}
-                    {expenseCurrency !== currencySettings.defaultCurrency && (
-                      <div className="md:w-32">
-                        <div className="text-neutral-500 text-sm mb-1">В {currencySettings.defaultCurrency}</div>
-                        <div className="text-neutral-600">
-                          {convertedAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {getCurrencySymbol(currencySettings.defaultCurrency)}
-                        </div>
+                      {/* Comment */}
+                      <div className="min-w-0 text-sm text-neutral-600">
+                        {expense.comment && (
+                          <>
+                            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                              Комментарий
+                            </div>
+                            <div className="text-neutral-700 line-clamp-3">{expense.comment}</div>
+                          </>
+                        )}
                       </div>
-                    )}
-
-                    {/* Comment */}
-                    <div className="flex-1 min-w-0">
-                      {expense.comment ? (
-                        <>
-                          <div className="text-neutral-500 text-sm mb-1">Комментарий</div>
-                          <div className="text-neutral-700 text-sm">{expense.comment}</div>
-                        </>
-                      ) : (
-                        <div className="text-neutral-400 text-sm italic">Без комментария</div>
-                      )}
-                    </div>
                   </div>
-                );
-              })}
+
+                <button
+                  type="button"
+                  aria-label="Удалить расход"
+                  className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition-colors hover:border-neutral-300 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => handleDelete(expense.id)}
+                  disabled={deletingId === expense.id}
+                >
+                  <DeleteOutlined style={{ fontSize: 18 }} />
+                </button>
+                  </div>
+                ))}
             </div>
-          </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardContent className="py-12 text-center text-neutral-500">
-            История расходов пуста. Добавьте расходы, чтобы увидеть их здесь.
-          </CardContent>
+          История расходов пуста. Добавьте расходы, чтобы увидеть их здесь.
         </Card>
       )}
     </div>
