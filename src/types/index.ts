@@ -12,7 +12,9 @@ export type Expense = {
   currency_symbol: number;
   year: number;
   category_icon: string;
-  created_at?: string;
+  created_at: string | number | Date;
+  category_detail?: CategoryDetail;
+  conversions?: Conversion[];
 
 //   amount
 // : 
@@ -39,4 +41,23 @@ export type CurrencySettings = {
   exchangeRates: Record<string, number>;
   syncWithGoogle: boolean;
   googleRateAdjustment: number;
+};
+
+export type CategoryDetail = {
+  color: string;
+  created_at: string;
+  expenses_count: number;
+  icon: string;
+  id: number;
+  is_active: boolean;
+  name: string;
+  updated_at: string;
+};
+
+export type Conversion = { 
+  currency_code: string;
+  currency_symbol: string;
+  amount: string;
+  rate_snapshot: string;
+  currency: number;
 };

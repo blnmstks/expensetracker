@@ -15,7 +15,6 @@ import {
 import { 
   CalendarOutlined, 
   DeleteOutlined, 
-  DollarOutlined, 
   MoreOutlined 
 } from '@ant-design/icons';
 import { useCategories, useCurrency } from '../store';
@@ -26,7 +25,7 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 interface AddExpenseProps {
-  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'month' | 'year' | 'category_color' | 'category_name' | 'category_icon' | 'currency_code' | 'currency_symbol' | 'created_at'>) => void;
   expenses: Expense[];
   onDeleteExpense: (id: number) => void;
   currencySettings: CurrencySettings;
@@ -62,21 +61,12 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       return;
     }
 
-    const selectedCategory = getCategoryById(categoryId);
-
     onAddExpense({
       amount: numAmount,
       currency: currency.id,
       category: categoryId,
       date: date.format('YYYY-MM-DD'),
-      month: parseInt(date.format('YYYYMM')),
-      year: parseInt(date.format('YYYY')),
       comment: comment.trim() || undefined,
-      category_color: selectedCategory?.color || '#2078F3',
-      category_name: selectedCategory?.name || '',
-      category_icon: selectedCategory?.icon || '📦',
-      currency_code: currency?.code,
-      currency_symbol: currency?.id,
     });
     message.success(`Вы потратили ${numAmount.toFixed(2)} ${currency?.symbol}`);
 

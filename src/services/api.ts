@@ -1,5 +1,5 @@
 import axiosInstance from '../lib/axios';
-import type { Expense, Category, CurrencySettings } from '../App';
+import { Category, Expense } from '../types';
 
 // Экспортируем authAPI из отдельного файла
 export { authAPI } from './authAPI';
