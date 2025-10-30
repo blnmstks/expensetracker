@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories, useExpenses } from '../store';
-import { Select, Card, Table } from 'antd';
+import { useCurrency, useExpenses } from '../store';
+import { Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CurrencySettings } from '../types';
 
@@ -13,7 +13,6 @@ interface AnalyticsProps {
 
 type DataType = {
   key: string;
-  categoryId: number;
   categoryName: string;
   categoryIcon: string;
   [monthKey: string]: number | string;
@@ -26,21 +25,66 @@ const capitalize = (value: string) => {
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
+const MONTHS = [
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec',
+];
+
+const monthKeyToDate = (key: string) => {
+  const [rawMonth, rawYear] = key.toLowerCase().split('-');
+
+  if (!rawMonth || !rawYear) {
+    return null;
+  }
+
+  const monthIndex = MONTHS.indexOf(rawMonth);
+
+  if (monthIndex === -1) {
+    return null;
+  }
+
+  const yearValue = Number(rawYear);
+
+  if (Number.isNaN(yearValue)) {
+    return null;
+  }
+
+  const fullYear = rawYear.length === 2 ? 2000 + yearValue : yearValue;
+
+  return new Date(fullYear, monthIndex, 1);
+};
+
+const getMonthLabel = (key: string) => {
+  const date = monthKeyToDate(key);
+
+  if (!date) {
+    return key;
+  }
+
+  return capitalize(format(date, 'LLLL yyyy', { locale: ru }));
+};
+
 export function Analytics({ currencySettings }: AnalyticsProps) {
   const [selectedCurrency, setSelectedCurrency] = useState<number>(currencySettings.defaultCurrency);
-  const { categories, fetchCategories } = useCategories();
-  const { expenses, fetchExpenses } = useExpenses();
+  const { categoryMonthlyExpenses, fetchCategoryMonthlyExpenses } = useExpenses();
+  const { currency: currencies, fetchCurrency } = useCurrency(); // необходимо получить список валют из стора
 
   useEffect(() => {
-    fetchCategories();
-    fetchExpenses();
-  }, [fetchCategories, fetchExpenses]);
+    fetchCategoryMonthlyExpenses();
+    fetchCurrency();
+  }, [fetchCategoryMonthlyExpenses]);
 
-  const convertCurrency = (
-    amount: number,
-    fromCurrencyId: number,
-    toCurrencyId: number,
-  ) => {
+  const convertCurrency = (amount: number, fromCurrencyId: number, toCurrencyId: number) => {
     if (fromCurrencyId === toCurrencyId) {
       return amount;
     }
@@ -63,55 +107,6 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
     return AVAILABLE_CURRENCIES.find((c) => c.id === currencyId)?.symbol || '';
   };
 
-  const lastMonthRange = useMemo(() => {
-    const current = new Date();
-    const lastMonthEnd = new Date(current.getFullYear(), current.getMonth(), 0);
-    const lastMonthStart = new Date(
-      lastMonthEnd.getFullYear(),
-      lastMonthEnd.getMonth(),
-      1,
-    );
-    const key = `${lastMonthStart.getFullYear()}-${String(
-      lastMonthStart.getMonth() + 1,
-    ).padStart(2, '0')}`;
-
-    const label = capitalize(
-      format(lastMonthStart, 'LLLL yyyy', { locale: ru }),
-    );
-
-    return {
-      start: lastMonthStart,
-      end: lastMonthEnd,
-      display: label,
-      key,
-    };
-  }, []);
-
-  const lastMonthExpenses = useMemo(() => {
-    return expenses.filter((expense) => {
-      const expenseDate = new Date(expense.date);
-      return (
-        expenseDate >= lastMonthRange.start && expenseDate <= lastMonthRange.end
-      );
-    });
-  }, [expenses, lastMonthRange]);
-
-  const aggregatedByCategory = useMemo(() => {
-    const map = new Map<number, number>();
-
-    lastMonthExpenses.forEach((expense) => {
-      const amount = convertCurrency(
-        expense.amount,
-        expense.currency,
-        selectedCurrency,
-      );
-
-      map.set(expense.category, (map.get(expense.category) || 0) + amount);
-    });
-
-    return map;
-  }, [lastMonthExpenses, selectedCurrency, currencySettings]);
-
   const currencySymbol = getCurrencySymbol(selectedCurrency);
 
   const formatAmount = (amount: number) => {
@@ -121,7 +116,48 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
     });
   };
 
-  const months = useMemo(() => [lastMonthRange], [lastMonthRange]);
+  const categoryRows = useMemo(() => {
+    if (!categoryMonthlyExpenses || typeof categoryMonthlyExpenses !== 'object') {
+      return [];
+    }
+
+    return Object.entries(categoryMonthlyExpenses).map(([categoryName, payload]) => {
+      const { icon, values } = (payload as { icon?: string; values?: Record<string, number> }) || {};
+
+      return {
+        categoryName,
+        categoryIcon: icon ?? '',
+        values: values ?? {},
+      };
+    });
+  }, [categoryMonthlyExpenses]);
+
+  const monthKeys = useMemo(() => {
+    const keys = new Set<string>();
+
+    categoryRows.forEach(({ values }) => {
+      Object.keys(values).forEach((monthKey) => keys.add(monthKey));
+    });
+
+    return Array.from(keys).sort((a, b) => {
+      const dateA = monthKeyToDate(a);
+      const dateB = monthKeyToDate(b);
+
+      if (!dateA && !dateB) {
+        return a.localeCompare(b);
+      }
+
+      if (!dateA) {
+        return 1;
+      }
+
+      if (!dateB) {
+        return -1;
+      }
+
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [categoryRows]);
 
   const columns = useMemo<ColumnsType<DataType>>(() => {
     const baseColumn: ColumnsType<DataType> = [
@@ -140,10 +176,10 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
       },
     ];
 
-    const monthColumns: ColumnsType<DataType> = months.map((month) => ({
-      title: month.display,
-      dataIndex: `month-${month.key}`,
-      key: `month-${month.key}`,
+    const monthColumns: ColumnsType<DataType> = monthKeys.map((monthKey) => ({
+      title: getMonthLabel(monthKey),
+      dataIndex: `month-${monthKey}`,
+      key: `month-${monthKey}`,
       align: 'right',
       render: (value?: number) => {
         if (!value || value <= 0) {
@@ -155,18 +191,30 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
     }));
 
     return baseColumn.concat(monthColumns);
-  }, [months, currencySymbol]);
+  }, [monthKeys, currencySymbol]);
 
   const dataSource = useMemo<DataType[]>(() => {
-    return categories.map((category) => ({
-      key: String(category.id),
-      categoryId: category.id,
-      categoryName: category.name,
-      categoryIcon: category.icon,
-      [`month-${lastMonthRange.key}`]:
-        aggregatedByCategory.get(category.id) || 0,
-    }));
-  }, [aggregatedByCategory, categories, lastMonthRange.key]);
+    return categoryRows.map(({ categoryName, categoryIcon, values }) => {
+      const monthValues = monthKeys.reduce<Record<string, number>>((acc, monthKey) => {
+        const rawValue = values?.[monthKey] ?? 0;
+        const convertedValue = convertCurrency(
+          Number(rawValue),
+          currencySettings.defaultCurrency,
+          selectedCurrency,
+        );
+
+        acc[`month-${monthKey}`] = convertedValue;
+        return acc;
+      }, {});
+
+      return {
+        key: categoryName,
+        categoryName,
+        categoryIcon,
+        ...monthValues,
+      };
+    });
+  }, [categoryRows, monthKeys, currencySettings, selectedCurrency]);
 
   return (
     <div className="max-w-full mx-auto space-y-6 md:p-6">
@@ -188,19 +236,17 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         </div>
       </div>
 
-      <Card>
-        <Table<DataType>
-          columns={columns}
-          dataSource={dataSource}
-          pagination={false}
-          scroll={{ x: 'max-content', y: 55 * 5 }}
-        />
-        {lastMonthExpenses.length === 0 && (
-          <div className="mt-4 text-sm text-neutral-500 text-center">
-            Нет данных за последний месяц. Добавьте расходы, чтобы увидеть аналитику.
-          </div>
-        )}
-      </Card>
+      <Table<DataType>
+        columns={columns}
+        dataSource={dataSource}
+        pagination={false}
+        scroll={{ x: 'max-content', y: 55 * 5 }}
+      />
+      {dataSource.length === 0 && (
+        <div className="mt-4 text-sm text-neutral-500 text-center">
+          Нет данных для отображения. Добавьте расходы, чтобы увидеть аналитику.
+        </div>
+      )}
     </div>
   );
 }

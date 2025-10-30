@@ -1,6 +1,6 @@
 import { Analytics } from '../components/Analytics';
-import type { CurrencySettings } from '../App';
 import ErrorBoundary, { SectionFallback } from '../components/ErrorBoundary';
+import { CurrencySettings } from '../types';
 
 interface AnalyticsPageProps {
   currencySettings: CurrencySettings;

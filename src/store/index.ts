@@ -9,7 +9,9 @@ type CategoriesStore = {
 
 type ExpensesStore = {
   expenses: Expense[];
+  categoryMonthlyExpenses: any;
   fetchExpenses: () => Promise<void>;
+  fetchCategoryMonthlyExpenses: () => Promise<void>;
   deleteExpense: (id: number) => Promise<void>;
 };
 
@@ -29,17 +31,25 @@ export const useCategories = create<CategoriesStore>((set) => ({
 
 export const useExpenses = create<ExpensesStore>((set) => ({
   expenses: [],
+  categoryMonthlyExpenses: {},
+
   fetchExpenses: async () => {
     const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 0, 0, 0).toISOString();
     const end = new Date().toISOString();
     const data = await expenseAPI.getByPeriod();
     set({ expenses : data });
   },
+
   deleteExpense: async (id) => {
     await expenseAPI.delete(String(id));
     set((state) => ({
       expenses: state.expenses.filter((expense) => expense.id !== id),
     }));
+  },
+
+  fetchCategoryMonthlyExpenses: async () => {
+    const data = await expenseAPI.categoryMontlyExpenses();
+    set({ categoryMonthlyExpenses: data });
   },
 }));
 

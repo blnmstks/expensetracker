@@ -49,6 +49,12 @@ export const expenseAPI = {
     const response = await axiosInstance.get<Expense[]>(`/expenses/category/${categoryId}/`);
     return response.data;
   },
+
+  // Получить ежемесячные расходы по категориям
+  categoryMontlyExpenses: async () => {
+    const response = await axiosInstance.get('/expenses/category_monthly/');
+    return response.data;
+  }
 };
 
 // API сервисы для работы с категориями
