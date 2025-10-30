@@ -179,7 +179,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
       title: monthKey,
       dataIndex: `month-${monthKey}`,
       key: `month-${monthKey}`,
-      align: 'right',
+      align: 'center',
       render: (value?: number) => {
         if (!value || value <= 0) {
           return <span> </span>;
