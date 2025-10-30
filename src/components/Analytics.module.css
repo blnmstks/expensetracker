@@ -1,0 +1,28 @@
+.customTable :global(.ant-table-thead > tr > th) {
+  white-space: nowrap;
+}
+
+.customTable :global(.ant-table-tbody > tr > td) {
+  white-space: nowrap;
+}
+
+.categoryHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.muted {
+  color: #bfbfbf;
+}

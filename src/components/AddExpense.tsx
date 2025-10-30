@@ -1,23 +1,31 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Trash2, DollarSign, MoreHorizontal } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Button } from './ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Textarea } from './ui/textarea';
-import { cn } from './ui/utils';
-import { toast } from 'sonner';
-import type { Expense, CurrencySettings } from '../App';
-import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store/categories';
+import { 
+  Card, 
+  Input, 
+  Button, 
+  Select, 
+  DatePicker, 
+  message, 
+  Typography, 
+  Space,
+  Dropdown,
+} from 'antd';
+import { 
+  CalendarOutlined, 
+  DeleteOutlined, 
+  MoreOutlined 
+} from '@ant-design/icons';
+import { useCategories, useCurrency } from '../store';
+import dayjs, { Dayjs } from 'dayjs';
+import { Currency, CurrencySettings, Expense } from '../types';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface AddExpenseProps {
-  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  onAddExpense: (expense: Omit<Expense, 'id' | 'month' | 'year' | 'category_color' | 'category_name' | 'category_icon' | 'currency_code' | 'currency_symbol' | 'created_at'>) => void;
   expenses: Expense[];
   onDeleteExpense: (id: number) => void;
   currencySettings: CurrencySettings;
@@ -25,21 +33,15 @@ interface AddExpenseProps {
 
 export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState(currencySettings.defaultCurrency);
-  const [category, setCategory] = useState(1);
-  const [date, setDate] = useState<Date>(new Date());
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [currency, setCurrency] = useState<Currency>({id: 1, code: 'USD', symbol: '$', name: 'US Dollar'});
+  const [category, setCategory] = useState<number | null>(null);
+  const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
-  const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
   const { categories, fetchCategories } = useCategories();
-  
-  // Get quick access currencies (first 3 active currencies)
-  const quickCurrencies = currencySettings.activeCurrencies.slice(0, 3);
+  const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
+
   const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
 
-  const getCurrencySymbol = (code: number) => {
-    return AVAILABLE_CURRENCIES.find(c => c.id === code)?.symbol || code;
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,19 +55,25 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       return;
     }
 
+    const categoryId = category ?? categories[0]?.id;
+    if (!categoryId) {
+      message.error('Выберите категорию');
+      return;
+    }
+
     onAddExpense({
       amount: numAmount,
-      currency,
-      category,
-      date: format(date, 'yyyy-MM-dd'),
-      month: format(date, 'yyyy-MM'),
+      currency: currency.id,
+      category: categoryId,
+      date: date.format('YYYY-MM-DD'),
       comment: comment.trim() || undefined,
     });
-    toast.success(`Вы потратили ${numAmount.toFixed(2)} ${getCurrencySymbol(currency)}`);
+    message.success(`Вы потратили ${numAmount.toFixed(2)} ${currency?.symbol}`);
 
     setAmount('');
-    setCategory(1);
+    setCategory(categoryId);
     setComment('');
+    fetchCategories();
   };
 
   const getCategoryById = (id: number) => {
@@ -74,217 +82,192 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
 
   useEffect(() => {
     fetchCategories();
+    fetchCurrency();
   }, []);
 
+  useEffect(() => {
+    if (categories.length > 0) {
+      setCategory((prev) => {
+        if (prev !== null && categories.some((cat) => cat.id === prev)) {
+          return prev;
+        }
+        return categories[0].id;
+      });
+    }
+  }, [categories]);
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Добавить расход</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Сумма</Label>
-              <div className="flex gap-2">
+    <div style={{ maxWidth: '768px', margin: '0 auto' }}>
+      <Card title="Добавить расход" style={{ marginBottom: '24px' }}>
+        <form onSubmit={handleSubmit}>
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <div>
+              <Text style={{ display: 'block', marginBottom: '8px' }}>Сумма</Text>
+              <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px', width: '100%' }}>
                 <Input
-                  id="amount"
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="text-lg text-[14px] flex-1"
+                  style={{ fontSize: '16px', flex: 1 }}
+                  size="large"
                 />
-                <div className="flex gap-1">
-                  {quickCurrencies.map((curr) => (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  {fetchedCurrencies.map((curr) => (
                     <Button
-                      key={curr}
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        'w-10 h-10',
-                        currency === curr && 'bg-emerald-50 border-emerald-600 text-emerald-700'
-                      )}
-                      onClick={() => setCurrency(curr)}
+                      key={curr.id}
+                      type={currency?.id === curr.id ? 'primary' : 'default'}
+                      onClick={() => setCurrency({id: curr.id, code: curr.code, symbol: curr.symbol, name: curr.name})}
+                      size="large"
+                      style={{
+                        minWidth: '48px',
+                        ...(currency?.id === curr.id
+                          ? { backgroundColor: '#2078F3', borderColor: '#2078F3' }
+                          : {}),
+                      }}
                     >
-                      <span className="text-sm">{getCurrencySymbol(curr)}</span>
+                      {curr.symbol}
                     </Button>
                   ))}
                   {hasMoreCurrencies && (
-                    <Popover open={currencyMenuOpen} onOpenChange={setCurrencyMenuOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="w-10 h-10"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48" align="end">
-                        <div className="space-y-1">
-                          {currencySettings.activeCurrencies.map((curr) => (
-                            <Button
-                              key={curr}
-                              type="button"
-                              variant="ghost"
-                              className={cn(
-                                'w-full justify-start',
-                                currency === curr && 'bg-emerald-50 text-emerald-700'
-                              )}
-                              onClick={() => {
-                                setCurrency(curr);
-                                setCurrencyMenuOpen(false);
-                              }}
-                            >
-                              <span className="mr-2">{getCurrencySymbol(curr)}</span>
-                              {curr}
-                            </Button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <Dropdown
+                      menu={{
+                        items: currencySettings.activeCurrencies.map((curr) => ({
+                          key: curr,
+                          // label: `${getCurrencySymbol(curr)} ${AVAILABLE_CURRENCIES.find(c => c.id === curr)?.code}`,
+                          // onClick: () => setCurrency(curr),
+                        })),
+                      }}
+                    >
+                      <Button
+                        icon={<MoreOutlined />}
+                        size="large"
+                        style={{ minWidth: '48px', backgroundColor: '#f5f5f5' }}
+                      />
+                    </Dropdown>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Категория</Label>
-              <Select value={category} onValueChange={setCategory}>
-                 <SelectTrigger id="category">
-                   <SelectValue placeholder="Выберите категорию" />
-                 </SelectTrigger>
-                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>
-                      <span className="flex items-center">
-                        <span className="mr-2">{cat.icon}</span>
-                        {cat.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                 </SelectContent>
-               </Select>
+            <div>
+              <Text style={{ display: 'block', marginBottom: '8px' }}>Категория</Text>
+              <Select<number>
+                value={category ?? undefined} 
+                onChange={(value) => setCategory(value)}
+                style={{ width: '100%' }}
+                // size="large"
+              >
+                {categories.map((cat) => (
+                  <Select.Option key={cat.id} value={cat.id}>
+                    <span>{cat.icon} {cat.name}</span>
+                  </Select.Option>
+                ))}
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Месяц (опционально)</Label>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start',
-                      !date && 'text-neutral-500'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, 'LLLL yyyy', { locale: ru }) : 'Выберите месяц'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => {
-                      if (newDate) {
-                        setDate(newDate);
-                        setCalendarOpen(false);
-                      }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <div>
+              <Text style={{ display: 'block', marginBottom: '8px' }}>Месяц (опционально)</Text>
+              <DatePicker
+                value={date}
+                onChange={(newDate) => newDate && setDate(newDate)}
+                format="MMMM YYYY"
+                picker="month"
+                style={{ width: '100%' }}
+                size="large"
+                placeholder="Выберите месяц"
+                suffixIcon={<CalendarOutlined />}
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="comment">Комментарий (опционально)</Label>
-              <Textarea
-                id="comment"
+            <div>
+              <Text style={{ display: 'block', marginBottom: '8px' }}>Комментарий (опционально)</Text>
+              <TextArea
                 placeholder="Добавьте заметку о расходе..."
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
+                size="large"
               />
             </div>
 
-            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
+            >
               Добавить расход
             </Button>
-          </form>
-        </CardContent>
+          </Space>
+        </form>
       </Card>
 
       {/* Summary Card */}
-      <Card className="mt-6">
-        <CardContent className="pt-6">
-          <div className="text-neutral-500 mb-2">Расходы за месяц</div>
-          {/* <div className="space-y-1">
-            {monthTotalsByCurrency.map(({ currency, symbol, total }) => (
-              <div key={currency} className="text-emerald-600">
-                {total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {symbol}
-              </div>
-            ))}
-          </div> */}
-        </CardContent>
+      <Card style={{ marginBottom: '24px' }}>
+        <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>Расходы за месяц</Text>
+        {/* TODO: Add month totals by currency */}
       </Card>
 
       {/* Recent Expenses */}
       {expenses.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Последние расходы</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {expenses.slice(0, 10).map((expense) => {
-                const cat = getCategoryById(expense.category);
-                const expCurrency = expense.currency || currencySettings.defaultCurrency;
-                return (
-                  <div
-                    key={expense.id}
-                    className="flex items-center justify-between py-3 border-b border-neutral-100 last:border-0"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: cat?.color + '20' }}
-                      >
-                        <span>{cat?.icon}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-neutral-900">{cat?.name}</div>
-                        <div className="text-neutral-500 text-sm">
-                          {format(new Date(expense.date), 'LLLL yyyy', { locale: ru })}
-                        </div>
-                        {expense.comment && (
-                          <div className="text-neutral-400 text-sm mt-1 truncate">
-                            {expense.comment}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-neutral-900 mr-2">
-                        {expense.amount.toLocaleString('ru-RU')} {getCurrencySymbol(expCurrency)}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-neutral-400 hover:text-red-500 flex-shrink-0"
-                        onClick={() => onDeleteExpense(expense.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+        <Card title="Последние расходы">
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {expenses.slice(0, 10).map((expense) => {
+              const cat = getCategoryById(expense.category);
+              const expCurrency = expense.currency || currencySettings.defaultCurrency;
+              return (
+                <div
+                  key={expense.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                >
+                  <Space style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: cat?.color + '20',
+                        flexShrink: 0
+                      }}
+                    >
+                      <span>{cat?.icon}</span>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 500 }}>{cat?.name}</div>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {format(new Date(expense.date), 'LLLL yyyy', { locale: ru })}
+                      </Text>
+                      {expense.comment && (
+                        <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {expense.comment}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginRight: '8px', fontWeight: 500 }}>
+                      {/* {expense.amount.toLocaleString('ru-RU')} {getCurrencySymbol(expCurrency)} */}
+                    </div>
+                    <Button
+                      type="text"
+                      icon={<DeleteOutlined style={{ fontSize: 18, color: '#8c8c8c' }} />}
+                      onClick={() => onDeleteExpense(expense.id)}
+                    />
+                  </Space>
+                </div>
+              );
+            })}
+          </Space>
         </Card>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Category, Expense } from '../App';
-import { categoryAPI, expenseAPI } from '../services/api';
+import { categoryAPI, currencyAPI, expenseAPI } from '../services/api';
+import { Category, Currency, Expense } from '../types';
 
 type CategoriesStore = {
   categories: Category[];
@@ -12,6 +12,11 @@ type ExpensesStore = {
   fetchExpenses: () => Promise<void>;
   deleteExpense: (id: number) => Promise<void>;
 };
+
+type CurrencyStore = {
+  currency: Currency[];
+  fetchCurrency: () => Promise<void>;
+};  
 
 export const useCategories = create<CategoriesStore>((set) => ({
   categories: [],
@@ -35,5 +40,13 @@ export const useExpenses = create<ExpensesStore>((set) => ({
     set((state) => ({
       expenses: state.expenses.filter((expense) => expense.id !== id),
     }));
+  },
+}));
+
+export const useCurrency = create<CurrencyStore>((set) => ({
+  currency: [],
+  fetchCurrency: async () => {
+    const data = await currencyAPI.getAll();
+    set({ currency: data });
   },
 }));

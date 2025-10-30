@@ -1,0 +1,276 @@
+/* Кастомные стили для Ant Design */
+
+/* Адаптивные стили для Layout */
+.ant-layout {
+  background: #f5f5f5;
+}
+
+.ant-layout-sider {
+  background: #fff;
+}
+
+/* Стили для меню */
+.ant-menu-item-selected {
+  background-color: #E8F1FF !important;
+  color: #2078F3 !important;
+}
+
+.ant-menu-item:hover {
+  color: #2078F3 !important;
+}
+
+/* Адаптивные карточки */
+.ant-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Адаптивные таблицы */
+.ant-table-wrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .ant-table {
+    font-size: 12px;
+  }
+  
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+  }
+}
+
+/* Адаптивные кнопки */
+@media (max-width: 576px) {
+  .ant-btn {
+    padding: 4px 12px;
+    font-size: 14px;
+  }
+  
+  .ant-btn-lg {
+    padding: 8px 16px;
+    font-size: 16px;
+  }
+}
+
+/* Drawer стили */
+.ant-drawer-body {
+  padding: 0;
+}
+
+/* Header стили */
+.ant-layout-header {
+  padding: 0 16px;
+  line-height: 64px;
+}
+
+/* Адаптивные формы */
+@media (max-width: 576px) {
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .ant-input,
+  .ant-input-number,
+  .ant-picker,
+  .ant-select-selector {
+    font-size: 16px; /* Предотвращает зум на iOS */
+  }
+}
+
+/* Адаптивные модальные окна */
+@media (max-width: 576px) {
+  .ant-modal {
+    max-width: calc(100vw - 32px);
+    margin: 16px auto;
+  }
+  
+  .ant-modal-body {
+    padding: 16px;
+  }
+}
+
+/* Стили для Select */
+.ant-select-dropdown {
+  z-index: 1050;
+}
+
+/* Плавные переходы */
+.ant-menu-item,
+.ant-btn,
+.ant-card {
+  transition: all 0.3s ease;
+}
+
+/* Цветовая схема для успеха */
+.ant-btn-primary {
+  background-color: #2078F3;
+  border-color: #2078F3;
+}
+
+.ant-btn-primary:hover {
+  background-color: #1C6DE0;
+  border-color: #1C6DE0;
+}
+
+/* Адаптивный контент */
+.ant-layout-content {
+  padding: 24px;
+}
+
+@media (max-width: 768px) {
+  .ant-layout-content {
+    padding: 16px;
+    padding-bottom: 80px; /* Отступ для мобильного навбара */
+  }
+}
+
+@media (max-width: 576px) {
+  .ant-layout-content {
+    padding: 12px;
+    padding-bottom: 80px; /* Отступ для мобильного навбара */
+  }
+}
+
+/* Мобильный нижний навбар */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  z-index: 1000; /* Увеличен с 100 до 1000 */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mobile-nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-button:active {
+  background: #f5f5f5;
+}
+
+.mobile-nav-button.active {
+  color: #2078F3;
+}
+
+.mobile-nav-button:not(.active) {
+  color: #8c8c8c;
+}
+
+.mobile-nav-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.mobile-nav-label {
+  font-size: 11px;
+}
+
+.mobile-nav-button.active .mobile-nav-label {
+  font-weight: 600;
+}
+
+/* Стили для Popover */
+.ant-popover {
+  z-index: 1050;
+}
+
+/* Responsive Grid для статистики */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 576px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Стили для Badge */
+.ant-badge-status-dot {
+  width: 8px;
+  height: 8px;
+}
+
+/* Скроллбар стили */
+.ant-layout-sider-children::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ant-layout-sider-children::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ant-layout-sider-children::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.ant-layout-sider-children::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Адаптивные отступы для контента */
+.content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1400px) {
+  .content-wrapper {
+    max-width: 1400px;
+  }
+}
+
+/* Стили для Analytics и других страниц на мобильных */
+@media (max-width: 768px) {
+  /* Убираем лишние padding на мобильных */
+  .max-w-full.mx-auto.space-y-6.p-6 {
+    padding: 0 !important;
+  }
+  
+  /* Обеспечиваем правильный z-index для таблиц */
+  .ant-table-wrapper,
+  .ant-card {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Убеждаемся, что таблицы не перекрывают навбар */
+  .overflow-x-auto {
+    max-width: 100vw;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Sticky элементы в таблице не должны перекрывать навбар */
+  .sticky {
+    z-index: 10 !important;
+  }
+  
+  /* Убеждаемся, что контент не выходит за границы */
+  body {
+    overflow-x: hidden;
+  }
+}
