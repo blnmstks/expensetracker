@@ -111,8 +111,8 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
 
   const formatAmount = (amount: number) => {
     return amount.toLocaleString('ru-RU', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     });
   };
 
@@ -169,24 +169,23 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         width: 200,
         render: (_, record) => (
           <span>
-            <span>{record.categoryIcon}</span>
-            {record.categoryName}
+            {record.categoryIcon} {record.categoryName} 
           </span>
         ),
       },
     ];
 
     const monthColumns: ColumnsType<DataType> = monthKeys.map((monthKey) => ({
-      title: getMonthLabel(monthKey),
+      title: monthKey,
       dataIndex: `month-${monthKey}`,
       key: `month-${monthKey}`,
       align: 'right',
       render: (value?: number) => {
         if (!value || value <= 0) {
-          return <span>—</span>;
+          return <span> </span>;
         }
 
-        return `${formatAmount(value)} ${currencySymbol}`;
+        return `${formatAmount(value)}`;
       },
     }));
 
@@ -241,6 +240,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         dataSource={dataSource}
         pagination={false}
         scroll={{ x: 'max-content', y: 55 * 5 }}
+        bordered
       />
       {dataSource.length === 0 && (
         <div className="mt-4 text-sm text-neutral-500 text-center">
