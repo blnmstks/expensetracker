@@ -31,8 +31,11 @@ export type Category = {
 export type Currency = {
   id: number;
   code: string;
-  symbol: string;
   name: string;
+  symbol: string;
+  rate: string;
+  is_active: boolean;
+  is_personal: boolean;
 };
 
 export type CurrencySettings = {

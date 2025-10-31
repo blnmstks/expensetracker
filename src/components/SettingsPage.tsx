@@ -4,14 +4,11 @@ import {
   Button, 
   Input, 
   Modal, 
-  Alert, 
   Switch, 
   Checkbox, 
   Select, 
   Typography,
   Space,
-  Divider,
-  message,
   Upload as AntUpload
 } from 'antd';
 import { 
@@ -22,7 +19,7 @@ import {
   UploadOutlined 
 } from '@ant-design/icons';
 import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store';
+import { useCategories, useCurrency } from '../store';
 import { Category, CurrencySettings } from '../types';
 
 const { Title, Text } = Typography;
@@ -48,11 +45,13 @@ export function SettingsPage({
   const [manualRates, setManualRates] = useState(currencySettings.exchangeRates);
 
   const { categories, fetchCategories } = useCategories();
-    
-    useEffect(() => {
-      fetchCategories();
-    }, []);
-  
+  const { currency: currencies, fetchCurrency } = useCurrency();
+
+  useEffect(() => {
+    fetchCategories();
+    fetchCurrency();
+  }, []);
+
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
@@ -89,54 +88,7 @@ export function SettingsPage({
     setNewCategoryIcon('📦');
     setNewCategoryColor('#2078F3');
   };
-
-  const handleExportData = () => {
-    const expenses = localStorage.getItem('expenses') || '[]';
-    const categoriesData = localStorage.getItem('categories') || '[]';
-    const currencyData = localStorage.getItem('currencySettings') || '{}';
-    
-    const data = {
-      expenses: JSON.parse(expenses),
-      categories: JSON.parse(categoriesData),
-      currencySettings: JSON.parse(currencyData),
-      exportDate: new Date().toISOString(),
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expense-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        if (data.expenses) {
-          localStorage.setItem('expenses', JSON.stringify(data.expenses));
-        }
-        if (data.categories) {
-          localStorage.setItem('categories', JSON.stringify(data.categories));
-        }
-        if (data.currencySettings) {
-          localStorage.setItem('currencySettings', JSON.stringify(data.currencySettings));
-        }
-        window.location.reload();
-      } catch (error) {
-        alert('Ошибка при импорте данных. Проверьте формат файла.');
-      }
-    };
-    reader.readAsText(file);
-  };
+console.log(currencies)
 
   const handleDefaultCurrencyChange = (currencyId: number) => {
     const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyId)
@@ -210,7 +162,9 @@ export function SettingsPage({
           showSearch
           optionFilterProp="children"
         >
-          {AVAILABLE_CURRENCIES.map((currency) => (
+          {currencies
+            .filter(currency => currency.is_active)
+            .map((currency) => (
             <Select.Option key={currency.id} value={currency.id}>
               {currency.name} ({currency.code})
             </Select.Option>
@@ -516,40 +470,6 @@ export function SettingsPage({
           </div>
         </Space>
       </Modal>
-
-      {/* Data Management */}
-      <Card title="Управление данными">
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Space style={{ width: '100%' }} size="middle">
-            <Button 
-              icon={<DownloadOutlined />}
-              onClick={handleExportData}
-              style={{ flex: 1 }}
-            >
-              Экспорт данных
-            </Button>
-            <Button 
-              icon={<UploadOutlined />}
-              onClick={() => document.getElementById('import-file')?.click()}
-              style={{ flex: 1 }}
-            >
-              Импорт данных
-              <input
-                id="import-file"
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportData}
-              />
-            </Button>
-          </Space>
-          <Alert
-            message="Экспорт сохранит все ваши данные в JSON файл. Импорт восстановит данные из ранее сохранённого файла."
-            type="info"
-            showIcon
-          />
-        </Space>
-      </Card>
     </div>
   );
 }
