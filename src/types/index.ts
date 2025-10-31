@@ -39,6 +39,11 @@ export type Currency = {
   is_default?: boolean;
 };
 
+export type CurrencyRatePayload = {
+  id: number;
+  rate: string;
+};
+
 export type CurrencySettings = {
   defaultCurrency: number;
   activeCurrencies: number[];

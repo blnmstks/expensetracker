@@ -1,5 +1,5 @@
 import axiosInstance from '../lib/axios';
-import { Category, Expense } from '../types';
+import { Category, CurrencyRatePayload, Expense } from '../types';
 
 // Экспортируем authAPI из отдельного файла
 export { authAPI } from './authAPI';
@@ -107,7 +107,14 @@ export const currencyAPI = {
       is_active,
     });
     return response.data;
-  }
+  },
+
+  setCurrencyRates: async (rates: CurrencyRatePayload[]) => {
+    const response = await axiosInstance.post('/currencies/bulk-update-rates/', {
+      currencies: rates,
+    });
+    return response.data;
+  },
 };
 
 // API сервисы для аналитики

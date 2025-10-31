@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { categoryAPI, currencyAPI, expenseAPI } from '../services/api';
-import { Category, Currency, Expense } from '../types';
+import { Category, Currency, CurrencyRatePayload, Expense } from '../types';
 
 type CategoriesStore = {
   categories: Category[];
@@ -23,6 +23,7 @@ type CurrencyStore = {
   fetchDefaultCurrency: () => Promise<void>;
   setDefaultCurrency: (id: number) => Promise<void>;
   setCurrencyActiveStatus: (id: number, is_active: boolean) => Promise<void>;
+  setCurrencyRates: (rates: CurrencyRatePayload[]) => Promise<void>;
 };
 
 export const useCategories = create<CategoriesStore>((set) => ({
@@ -84,5 +85,22 @@ export const useCurrency = create<CurrencyStore>((set) => ({
         curr.id === id ? { ...curr, is_active } : curr
       ),
     }));
-  }
+  },
+
+  setCurrencyRates: async (rates: CurrencyRatePayload[]) => {
+    await currencyAPI.setCurrencyRates(rates);
+    set((state) => ({
+      currency: state.currency.map((curr) => {
+        const updatedRate = rates.find((rate) => rate.id === curr.id);
+        if (!updatedRate) {
+          return curr;
+        }
+
+        return {
+          ...curr,
+          rate: updatedRate.rate,
+        };
+      }),
+    }));
+  },
 }));

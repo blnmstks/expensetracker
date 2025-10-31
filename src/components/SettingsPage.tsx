@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { 
   Card, 
   Button, 
@@ -24,6 +24,11 @@ const { Title, Text } = Typography;
 const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '✈️', '☕', '🍔', '🎬', '💰', '🎵', '🏃', '🐕', '🌳'];
 const COLOR_OPTIONS = ['#2078F3', '#3b82f6', '#60a5fa', '#1d4ed8', '#38bdf8', '#0ea5e9', '#93c5fd', '#dbeafe', '#1e3a8a', '#312e81'];
 
+type ManualRate = {
+  id: number;
+  rate: string;
+};
+
 export function SettingsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -34,17 +39,110 @@ export function SettingsPage() {
   const { defaultCurrency } = useCurrency();
   
   const { categories, fetchCategories } = useCategories();
-  const { currency: currencies, fetchCurrency, setDefaultCurrency, setCurrencyActiveStatus } = useCurrency();
+  const { 
+    currency: currencies, 
+    fetchCurrency, 
+    setDefaultCurrency, 
+    setCurrencyActiveStatus,
+    setCurrencyRates, 
+  } = useCurrency();
 
-  const activeCurrencies = currencies.filter(c => c.is_active);
+  const [manualRates, setManualRates] = useState<ManualRate[]>([]);
+  const [isSavingRates, setIsSavingRates] = useState(false);
 
-  const [manualRates, setManualRates] = useState(activeCurrencies);
-
+  const activeCurrencies = useMemo(
+    () => currencies.filter((currency) => currency.is_active),
+    [currencies],
+  );
 
   useEffect(() => {
     fetchCategories();
     fetchCurrency();
   }, []);
+
+  useEffect(() => {
+    setManualRates((previous) => {
+      const previousRates = new Map(previous.map((rate) => [rate.id, rate.rate]));
+      const nextRates = activeCurrencies.map<ManualRate>((currency) => ({
+        id: currency.id,
+        rate: previousRates.get(currency.id) ?? currency.rate ?? '',
+      }));
+
+      const isSameLength = nextRates.length === previous.length;
+      const isSameContent =
+        isSameLength &&
+        nextRates.every(
+          (rate, index) =>
+            rate.id === previous[index]?.id &&
+            rate.rate === previous[index]?.rate,
+        );
+
+      return isSameContent ? previous : nextRates;
+    });
+  }, [activeCurrencies]);
+
+  const normalizeRate = (value: string) => {
+    const sanitized = value.replace(',', '.').trim();
+    if (sanitized === '') {
+      return '';
+    }
+
+    const parsed = Number.parseFloat(sanitized);
+    if (!Number.isFinite(parsed)) {
+      return '';
+    }
+
+    return parsed.toFixed(6);
+  };
+
+  const handleManualRateChange = (id: number, rawValue: string) => {
+    const sanitized = rawValue.replace(',', '.');
+
+    setManualRates((previous) => {
+      const next = previous.some((rate) => rate.id === id)
+        ? previous.map((rate) =>
+            rate.id === id ? { ...rate, rate: sanitized } : rate,
+          )
+        : [...previous, { id, rate: sanitized }];
+
+      return next;
+    });
+  };
+
+  const handleSaveManualRates = async () => {
+    if (!manualRates.length) {
+      return;
+    }
+
+    setIsSavingRates(true);
+
+    try {
+      const ratesToPersist = manualRates
+        .filter((rate) => rate.id !== defaultCurrency)
+        .map((rate) => ({
+          id: rate.id,
+          rate: normalizeRate(rate.rate) || normalizeRate(
+            currencies.find((currency) => currency.id === rate.id)?.rate ?? '',
+          ),
+        }))
+        .filter((rate): rate is ManualRate => Boolean(rate && rate.rate));
+
+      if (!ratesToPersist.length) {
+        return;
+      }
+
+      await setCurrencyRates(ratesToPersist);
+
+      setManualRates((previous) =>
+        previous.map((rate) => {
+          const updated = ratesToPersist.find((item) => item.id === rate.id);
+          return updated ? updated : rate;
+        }),
+      );
+    } finally {
+      setIsSavingRates(false);
+    }
+  };
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
@@ -187,16 +285,17 @@ export function SettingsPage() {
                 .filter(c => c.is_active)
                 .map((currId) => {
                   const currency = currencies.find(c => c.id === currId.id);
-                  console.log(currency);
                   if (!currency) return null;
+                  const manualRate = manualRates.find((rate) => rate.id === currency.id);
+
                   return (
                     <Space key={currId.id} direction="vertical" size="small">
                       <Text style={{ fontSize: '12px' }}>{currency.code}</Text>
                       <Input
                         type="number"
-                        step="0.01"
-                        value={currency.rate}
-                        // onChange={(e) => handleManualRateChange(currency.code, e.target.value)}
+                        step="0.000001"
+                        value={manualRate?.rate ?? ''}
+                        onChange={(e) => handleManualRateChange(currency.id, e.target.value)}
                         disabled={currId.id === defaultCurrency}
                       />
                     </Space>
@@ -205,7 +304,8 @@ export function SettingsPage() {
               </div>
               <Button 
                 type="primary"
-                // onClick={handleSaveManualRates}
+                onClick={handleSaveManualRates}
+                loading={isSavingRates}
                 style={{ width: '100%', backgroundColor: '#2078F3', borderColor: '#2078F3' }}
               >
                 Сохранить курсы
