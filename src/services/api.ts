@@ -77,7 +77,7 @@ export const categoryAPI = {
   },
 
   // Удалить категорию
-  delete: async (id: string) => {
+  delete: async (id: number) => {
     const response = await axiosInstance.delete(`/categories/${id}/`);
     return response.data;
   },

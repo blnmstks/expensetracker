@@ -4,7 +4,9 @@ import { Category, Currency, CurrencyRatePayload, Expense } from '../types';
 
 type CategoriesStore = {
   categories: Category[];
+  
   fetchCategories: () => Promise<void>;
+  deleteCategory: (id: number) => Promise<void>;
 };
 
 type ExpensesStore = {
@@ -28,10 +30,18 @@ type CurrencyStore = {
 
 export const useCategories = create<CategoriesStore>((set) => ({
   categories: [],
+
   fetchCategories: async () => {
     const data = await categoryAPI.getAll();
     set({ categories: data });
   },
+
+  deleteCategory: async (id: number) => {
+    await categoryAPI.delete(id);
+    set((state) => ({
+      categories: state.categories.filter((category) => category.id !== id),
+    }));
+  }
 }));
 
 

@@ -4,7 +4,6 @@ import {
   Button, 
   Input, 
   Modal, 
-  Switch, 
   Checkbox, 
   Select, 
   Typography,
@@ -37,8 +36,8 @@ export function SettingsPage() {
   const [newCategoryColor, setNewCategoryColor] = useState('#2078F3');
   
   const { defaultCurrency } = useCurrency();
-  
-  const { categories, fetchCategories } = useCategories();
+
+  const { categories, fetchCategories, deleteCategory: delCategory } = useCategories();
   const { 
     currency: currencies, 
     fetchCurrency, 
@@ -147,12 +146,6 @@ export function SettingsPage() {
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    // onAddCategory({
-    //   name: newCategoryName,
-    //   icon: newCategoryIcon,
-    //   color: newCategoryColor,
-    // });
-
     setNewCategoryName('');
     setNewCategoryIcon('📦');
     setNewCategoryColor('#2078F3');
@@ -169,12 +162,6 @@ export function SettingsPage() {
   const handleUpdateCategory = () => {
     if (!editingCategory || !newCategoryName.trim()) return;
 
-    // onUpdateCategory(editingCategory.id, {
-    //   name: newCategoryName,
-    //   icon: newCategoryIcon,
-    //   color: newCategoryColor,
-    // });
-
     setEditingCategory(null);
     setNewCategoryName('');
     setNewCategoryIcon('📦');
@@ -188,6 +175,12 @@ export function SettingsPage() {
   const handleActiveCurrencyToggle = (id: number, is_active: boolean) => {
     setCurrencyActiveStatus(id, is_active);
   }
+
+  const deleteCategory = (id: number) => {
+    return () => {
+      delCategory(id);
+    };
+  };
 
   return (
     <div style={{ maxWidth: '1024px', margin: '0 auto', padding: '24px' }}>
@@ -374,7 +367,7 @@ export function SettingsPage() {
                 <Button
                   type="text"
                   icon={<DeleteOutlined style={{ fontSize: 16, color: '#8c8c8c' }} />}
-                  // onClick={() => onDeleteCategory(category.id)}
+                  onClick={deleteCategory(category.id)}
                 />
               </Space>
             </div>
