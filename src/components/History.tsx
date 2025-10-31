@@ -3,14 +3,9 @@ import { ru } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
 import { Card, message } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
-import { CurrencySettings } from '../types';
 import { useExpenses } from '../store';
 
-interface HistoryProps {
-  currencySettings: CurrencySettings;
-}
-
-export function History({ currencySettings }: HistoryProps) {
+export function History() {
   const { expenses, fetchExpenses, deleteExpense } = useExpenses();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 

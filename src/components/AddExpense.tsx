@@ -19,7 +19,7 @@ import {
 } from '@ant-design/icons';
 import { useCategories, useCurrency } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
-import { Currency, CurrencySettings, Expense } from '../types';
+import { Currency, Expense } from '../types';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -28,10 +28,9 @@ interface AddExpenseProps {
   onAddExpense: (expense: Omit<Expense, 'id' | 'month' | 'year' | 'category_color' | 'category_name' | 'category_icon' | 'currency_code' | 'currency_symbol' | 'created_at'>) => void;
   expenses: Expense[];
   onDeleteExpense: (id: number) => void;
-  currencySettings: CurrencySettings;
 }
 
-export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
+export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<Currency>({id: 1, code: 'USD', symbol: '$', name: 'US Dollar'});
   const [category, setCategory] = useState<number | null>(null);
@@ -40,7 +39,14 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
   const { categories, fetchCategories } = useCategories();
   const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
 
-  const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
+  const c = fetchedCurrencies.filter(c => c.is_active);
+
+  // const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
+
+  useEffect(() => {
+    fetchCategories();
+    fetchCurrency();
+  }, []);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,11 +87,6 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchCurrency();
-  }, []);
-
-  useEffect(() => {
     if (categories.length > 0) {
       setCategory((prev) => {
         if (prev !== null && categories.some((cat) => cat.id === prev)) {
@@ -114,7 +115,9 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                   size="large"
                 />
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {fetchedCurrencies.map((curr) => (
+                  {fetchedCurrencies
+                  .filter((curr) => curr.is_active)
+                  .map((curr) => (
                     <Button
                       key={curr.id}
                       type={currency?.id === curr.id ? 'primary' : 'default'}
@@ -130,10 +133,10 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                       {curr.symbol}
                     </Button>
                   ))}
-                  {hasMoreCurrencies && (
+                  {/* {hasMoreCurrencies && (
                     <Dropdown
                       menu={{
-                        items: currencySettings.activeCurrencies.map((curr) => ({
+                        items: fetchedCurrencies.map((curr) => ({
                           key: curr,
                           // label: `${getCurrencySymbol(curr)} ${AVAILABLE_CURRENCIES.find(c => c.id === curr)?.code}`,
                           // onClick: () => setCurrency(curr),
@@ -146,7 +149,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                         style={{ minWidth: '48px', backgroundColor: '#f5f5f5' }}
                       />
                     </Dropdown>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>
@@ -217,7 +220,6 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {expenses.slice(0, 10).map((expense) => {
               const cat = getCategoryById(expense.category);
-              const expCurrency = expense.currency || currencySettings.defaultCurrency;
               return (
                 <div
                   key={expense.id}

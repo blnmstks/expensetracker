@@ -9,14 +9,13 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import type { Expense, CurrencySettings } from '../../App';
+import { Expense } from '../../types';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 interface MainLayoutProps {
   expenses: Expense[];
-  currencySettings: CurrencySettings;
   onLogout: () => void;
 }
 

@@ -36,6 +36,7 @@ export type Currency = {
   rate: string;
   is_active: boolean;
   is_personal: boolean;
+  is_default?: boolean;
 };
 
 export type CurrencySettings = {

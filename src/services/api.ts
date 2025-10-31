@@ -85,27 +85,27 @@ export const categoryAPI = {
 
 // API сервисы для работы с настройками валют
 export const currencyAPI = {
-  // // Получить настройки валют
-  // getSettings: async () => {
-  //   const response = await axiosInstance.get<CurrencySettings>('/currency/settings/');
-  //   return response.data;
-  // },
-
-  // // Обновить настройки валют
-  // updateSettings: async (settings: CurrencySettings) => {
-  //   const response = await axiosInstance.put<CurrencySettings>('/currency/settings/', settings);
-  //   return response.data;
-  // },
-
-  // // Получить актуальные курсы валют
-  // getExchangeRates: async (baseCurrency: string) => {
-  //   const response = await axiosInstance.get<Record<string, number>>('/currency/rates/', {
-  //     params: { base: baseCurrency },
-  //   });
-  //   return response.data;
-  // },
   getAll: async () => {
     const response = await axiosInstance.get('/currencies/');
+    return response.data;
+  },
+
+  getDefaultCurrency: async () => {
+    const response = await axiosInstance.get('/currencies/default/');
+    return response.data;
+  },
+
+  setDefaultCurrency: async (id: number) => {
+    const response = await axiosInstance.post('/currencies/set-default/', {
+      currency: id,
+    });
+    return response.data;
+  },
+
+  setCurrencyActiveStatus: async (id: number, is_active: boolean) => {
+    const response = await axiosInstance.post(`/currencies/${id}/set-active/`, {
+      is_active,
+    });
     return response.data;
   }
 };

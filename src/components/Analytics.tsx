@@ -1,28 +1,13 @@
-import { useState, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import { AVAILABLE_CURRENCIES } from '../App';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCurrency, useExpenses } from '../store';
 import { Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { CurrencySettings } from '../types';
-
-interface AnalyticsProps {
-  currencySettings: CurrencySettings;
-}
 
 type DataType = {
   key: string;
   categoryName: string;
   categoryIcon: string;
   [monthKey: string]: number | string;
-};
-
-const capitalize = (value: string) => {
-  if (!value) {
-    return '';
-  }
-  return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
 const MONTHS = [
@@ -64,52 +49,70 @@ const monthKeyToDate = (key: string) => {
   return new Date(fullYear, monthIndex, 1);
 };
 
-const getMonthLabel = (key: string) => {
-  const date = monthKeyToDate(key);
-
-  if (!date) {
-    return key;
-  }
-
-  return capitalize(format(date, 'LLLL yyyy', { locale: ru }));
-};
-
-export function Analytics({ currencySettings }: AnalyticsProps) {
-  const [selectedCurrency, setSelectedCurrency] = useState<number>(currencySettings.defaultCurrency);
+export function Analytics() {
   const { categoryMonthlyExpenses, fetchCategoryMonthlyExpenses } = useExpenses();
-  const { currency: currencies, fetchCurrency } = useCurrency(); // необходимо получить список валют из стора
-
+  const { currency: currencies, fetchCurrency } = useCurrency();
+  
   useEffect(() => {
     fetchCategoryMonthlyExpenses();
     fetchCurrency();
-  }, [fetchCategoryMonthlyExpenses]);
+  }, [fetchCategoryMonthlyExpenses, fetchCurrency]);
 
-  const convertCurrency = (amount: number, fromCurrencyId: number, toCurrencyId: number) => {
-    if (fromCurrencyId === toCurrencyId) {
-      return amount;
+  const defaultCurrency = useMemo(
+    () => currencies.find((currency) => currency.is_default) ?? currencies[0],
+    [currencies],
+  );
+
+  const [selectedCurrency, setSelectedCurrency] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (defaultCurrency && selectedCurrency === null) {
+      setSelectedCurrency(defaultCurrency.id);
     }
+  }, [defaultCurrency, selectedCurrency]);
 
-    const fromCurrency = AVAILABLE_CURRENCIES.find((c) => c.id === fromCurrencyId);
-    const toCurrency = AVAILABLE_CURRENCIES.find((c) => c.id === toCurrencyId);
+  const getCurrencyRate = useCallback(
+    (currencyId?: number) => {
+      if (!currencyId) return 1;
 
-    if (!fromCurrency || !toCurrency) {
-      return amount;
-    }
+      const rawRate = currencies.find((currency) => currency.id === currencyId)?.rate;
+      const parsedRate = rawRate ? parseFloat(rawRate) : NaN;
 
-    const fromRate = currencySettings.exchangeRates[fromCurrency.code] || 1;
-    const toRate = currencySettings.exchangeRates[toCurrency.code] || 1;
+      return Number.isFinite(parsedRate) && parsedRate > 0 ? parsedRate : 1;
+    },
+    [currencies],
+  );
 
-    const inUsd = amount / fromRate;
-    return inUsd * toRate;
+  const convertCurrency = useCallback(
+    (amount: number, fromCurrencyId?: number, toCurrencyId?: number) => {
+      if (!fromCurrencyId || !toCurrencyId || fromCurrencyId === toCurrencyId) {
+        return amount;
+      }
+
+      const fromRate = getCurrencyRate(fromCurrencyId);
+      const toRate = getCurrencyRate(toCurrencyId);
+
+      if (!fromRate || !toRate) {
+        return amount;
+      }
+
+      const amountInBase = amount / fromRate;
+      return amountInBase * toRate;
+    },
+    [getCurrencyRate],
+  );
+
+  const getCurrencySymbol = (currencyId?: number) => {
+    if (!currencyId) return '';
+    return currencies.find((currency) => currency.id === currencyId)?.symbol || '';
   };
 
-  const getCurrencySymbol = (currencyId: number) => {
-    return AVAILABLE_CURRENCIES.find((c) => c.id === currencyId)?.symbol || '';
-  };
-
-  const currencySymbol = getCurrencySymbol(selectedCurrency);
+  const currencySymbol = getCurrencySymbol(selectedCurrency ?? defaultCurrency?.id);
 
   const formatAmount = (amount: number) => {
+    if (!Number.isFinite(amount)) {
+      return amount;
+    }
     return amount.toLocaleString('ru-RU', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
@@ -185,7 +188,8 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
           return <span> </span>;
         }
 
-        return `${formatAmount(value)}`;
+        const formatted = formatAmount(value);
+        return currencySymbol ? `${formatted} ${currencySymbol}` : formatted;
       },
     }));
 
@@ -193,16 +197,24 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
   }, [monthKeys, currencySymbol]);
 
   const dataSource = useMemo<DataType[]>(() => {
+    const baseCurrencyId = defaultCurrency?.id;
+    const targetCurrencyId = selectedCurrency ?? baseCurrencyId;
+
     return categoryRows.map(({ categoryName, categoryIcon, values }) => {
       const monthValues = monthKeys.reduce<Record<string, number>>((acc, monthKey) => {
-        const rawValue = values?.[monthKey] ?? 0;
-        const convertedValue = convertCurrency(
-          Number(rawValue),
-          currencySettings.defaultCurrency,
-          selectedCurrency,
+        const rawValue = Number(values?.[monthKey] ?? 0);
+
+        if (!baseCurrencyId || !targetCurrencyId) {
+          acc[`month-${monthKey}`] = rawValue;
+          return acc;
+        }
+
+        acc[`month-${monthKey}`] = convertCurrency(
+          rawValue,
+          baseCurrencyId,
+          targetCurrencyId,
         );
 
-        acc[`month-${monthKey}`] = convertedValue;
         return acc;
       }, {});
 
@@ -213,7 +225,7 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
         ...monthValues,
       };
     });
-  }, [categoryRows, monthKeys, currencySettings, selectedCurrency]);
+  }, [categoryRows, monthKeys, convertCurrency, defaultCurrency, selectedCurrency]);
 
   return (
     <div className="max-w-full mx-auto space-y-6 md:p-6">
@@ -224,9 +236,9 @@ export function Analytics({ currencySettings }: AnalyticsProps) {
 
         <div className="w-full sm:w-48">
           <Select
-            value={selectedCurrency}
+            value={selectedCurrency ?? defaultCurrency?.id}
             onChange={setSelectedCurrency}
-            options={AVAILABLE_CURRENCIES.map((currency) => ({
+            options={currencies.map((currency) => ({
               value: currency.id,
               label: `${currency.symbol} ${currency.code}`,
             }))}

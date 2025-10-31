@@ -1,23 +1,19 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { ExpensesPage, AnalyticsPage, HistoryPage, SettingsPage } from '../pages';
-import type { Expense, CurrencySettings } from '../App';
+import { Expense } from '../types';
 
 interface RouterProps {
   expenses: Expense[];
-  currencySettings: CurrencySettings;
   onAddExpense: (expense: Omit<Expense, 'id'>) => Promise<Expense>;
   onDeleteExpense: (id: number) => void;
-  onUpdateCurrencySettings: (settings: CurrencySettings) => void;
   onLogout: () => void;
 }
 
 export const createAppRouter = ({
   expenses,
-  currencySettings,
   onAddExpense,
   onDeleteExpense,
-  onUpdateCurrencySettings,
   onLogout,
 }: RouterProps) => {
   return createBrowserRouter([
@@ -26,7 +22,6 @@ export const createAppRouter = ({
       element: (
         <MainLayout
           expenses={expenses}
-          currencySettings={currencySettings}
           onLogout={onLogout}
         />
       ),
@@ -42,25 +37,21 @@ export const createAppRouter = ({
               onAddExpense={onAddExpense}
               expenses={expenses}
               onDeleteExpense={onDeleteExpense}
-              currencySettings={currencySettings}
             />
           ),
         },
         {
           path: 'analytics',
-          element: <AnalyticsPage currencySettings={currencySettings} />,
+          element: <AnalyticsPage />,
         },
         {
           path: 'history',
-          element: <HistoryPage currencySettings={currencySettings} />,
+          element: <HistoryPage />,
         },
         {
           path: 'settings',
           element: (
-            <SettingsPage
-              currencySettings={currencySettings}
-              onUpdateCurrencySettings={onUpdateCurrencySettings}
-            />
+            <SettingsPage />
           ),
         },
       ],

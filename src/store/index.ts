@@ -17,8 +17,13 @@ type ExpensesStore = {
 
 type CurrencyStore = {
   currency: Currency[];
+  defaultCurrency: number;
+
   fetchCurrency: () => Promise<void>;
-};  
+  fetchDefaultCurrency: () => Promise<void>;
+  setDefaultCurrency: (id: number) => Promise<void>;
+  setCurrencyActiveStatus: (id: number, is_active: boolean) => Promise<void>;
+};
 
 export const useCategories = create<CategoriesStore>((set) => ({
   categories: [],
@@ -55,8 +60,29 @@ export const useExpenses = create<ExpensesStore>((set) => ({
 
 export const useCurrency = create<CurrencyStore>((set) => ({
   currency: [],
+  defaultCurrency: 1,
+
   fetchCurrency: async () => {
     const data = await currencyAPI.getAll();
     set({ currency: data });
   },
+
+  fetchDefaultCurrency: async () => {
+    const data = await currencyAPI.getDefaultCurrency();
+    set({ defaultCurrency: data.id });
+  },
+
+  setDefaultCurrency: async (id: number) => {
+    const data = await currencyAPI.setDefaultCurrency(id);
+    set({ defaultCurrency: id });
+  },
+
+  setCurrencyActiveStatus: async (id: number, is_active: boolean) => {
+    const data = await currencyAPI.setCurrencyActiveStatus(id, is_active);
+    set((state) => ({
+      currency: state.currency.map((curr) =>
+        curr.id === id ? { ...curr, is_active } : curr
+      ),
+    }));
+  }
 }));

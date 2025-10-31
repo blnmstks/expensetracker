@@ -15,37 +15,31 @@ import {
   PlusOutlined, 
   DeleteOutlined, 
   EditOutlined, 
-  DownloadOutlined, 
-  UploadOutlined 
 } from '@ant-design/icons';
-import { AVAILABLE_CURRENCIES } from '../App';
 import { useCategories, useCurrency } from '../store';
-import { Category, CurrencySettings } from '../types';
+import { Category } from '../types';
 
 const { Title, Text } = Typography;
-
-interface SettingsPageProps {
-  currencySettings: CurrencySettings;
-  onUpdateCurrencySettings: (settings: CurrencySettings) => void;
-}
 
 const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '✈️', '☕', '🍔', '🎬', '💰', '🎵', '🏃', '🐕', '🌳'];
 const COLOR_OPTIONS = ['#2078F3', '#3b82f6', '#60a5fa', '#1d4ed8', '#38bdf8', '#0ea5e9', '#93c5fd', '#dbeafe', '#1e3a8a', '#312e81'];
 
-export function SettingsPage({ 
-  currencySettings,
-  onUpdateCurrencySettings 
-}: SettingsPageProps) {
+export function SettingsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('📦');
   const [newCategoryColor, setNewCategoryColor] = useState('#2078F3');
-  const [defaultCurrencyOpen, setDefaultCurrencyOpen] = useState(false);
-  const [manualRates, setManualRates] = useState(currencySettings.exchangeRates);
-
+  
+  const { defaultCurrency } = useCurrency();
+  
   const { categories, fetchCategories } = useCategories();
-  const { currency: currencies, fetchCurrency } = useCurrency();
+  const { currency: currencies, fetchCurrency, setDefaultCurrency, setCurrencyActiveStatus } = useCurrency();
+
+  const activeCurrencies = currencies.filter(c => c.is_active);
+
+  const [manualRates, setManualRates] = useState(activeCurrencies);
+
 
   useEffect(() => {
     fetchCategories();
@@ -88,65 +82,14 @@ export function SettingsPage({
     setNewCategoryIcon('📦');
     setNewCategoryColor('#2078F3');
   };
-console.log(currencies)
+  
+  const selectDefaultCurrency = (id: number) => {
+    setDefaultCurrency(id);
+  }
 
-  const handleDefaultCurrencyChange = (currencyId: number) => {
-    const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyId)
-      ? currencySettings.activeCurrencies
-      : [...currencySettings.activeCurrencies, currencyId];
-
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      defaultCurrency: currencyId,
-      activeCurrencies: newActiveCurrencies,
-    });
-    setDefaultCurrencyOpen(false);
-  };
-
-  const handleActiveCurrencyToggle = (currencyId: number, checked: boolean) => {
-    if (currencyId === currencySettings.defaultCurrency) return; // Can't deselect default
-
-    const newActiveCurrencies = checked
-      ? [...currencySettings.activeCurrencies, currencyId]
-      : currencySettings.activeCurrencies.filter(c => c !== currencyId);
-
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      activeCurrencies: newActiveCurrencies,
-    });
-  };
-
-  const handleSyncToggle = (checked: boolean) => {
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      syncWithGoogle: checked,
-    });
-  };
-
-  const handleAdjustmentChange = (value: string) => {
-    const num = parseInt(value);
-    if (isNaN(num) || num < 0 || num > 9) return;
-    
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      googleRateAdjustment: num,
-    });
-  };
-
-  const handleManualRateChange = (currencyCode: string, value: string) => {
-    const rate = parseFloat(value);
-    if (isNaN(rate) || rate <= 0) return;
-
-    const newRates = { ...manualRates, [currencyCode]: rate };
-    setManualRates(newRates);
-  };
-
-  const handleSaveManualRates = () => {
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      exchangeRates: manualRates,
-    });
-  };
+  const handleActiveCurrencyToggle = (id: number, is_active: boolean) => {
+    setCurrencyActiveStatus(id, is_active);
+  }
 
   return (
     <div style={{ maxWidth: '1024px', margin: '0 auto', padding: '24px' }}>
@@ -156,8 +99,8 @@ console.log(currencies)
       <Card style={{ marginBottom: '24px' }} title="Дефолтная валюта">
         <Select
           style={{ width: '100%' }}
-          value={currencySettings.defaultCurrency}
-          onChange={handleDefaultCurrencyChange}
+          value={defaultCurrency}
+          onChange={selectDefaultCurrency}
           placeholder="Выберите валюту"
           showSearch
           optionFilterProp="children"
@@ -175,38 +118,39 @@ console.log(currencies)
       {/* Active Currencies */}
       <Card style={{ marginBottom: '24px' }} title="Активные валюты">
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {AVAILABLE_CURRENCIES.filter(c => 
-            currencySettings.activeCurrencies.includes(c.id) || c.id === currencySettings.defaultCurrency
-          ).map((currency) => (
-            <div key={currency.id} style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              padding: '12px', 
-              border: '1px solid #d9d9d9', 
-              borderRadius: '8px' 
-            }}>
-              <Space>
-                <span style={{ fontSize: '20px' }}>{currency.symbol}</span>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{currency.code}</div>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>{currency.name}</Text>
-                </div>
-              </Space>
-              <Checkbox
-                checked={currencySettings.activeCurrencies.includes(currency.id)}
-                onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
-                disabled={currency.id === currencySettings.defaultCurrency}
-              />
-            </div>
-          ))}
+          {currencies
+            .filter(c => c.is_active)
+            .map((currency) => (
+              <div key={currency.id} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                padding: '12px', 
+                border: '1px solid #d9d9d9', 
+                borderRadius: '8px' 
+              }}>
+                <Space>
+                  <span style={{ fontSize: '20px' }}>{currency.symbol}</span>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{currency.code}</div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{currency.name}</Text>
+                  </div>
+                </Space>
+                <Checkbox
+                  checked={currency.is_active}
+                  onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
+                  disabled={currency.id === defaultCurrency}
+                />
+              </div>
+            ))
+          }
           
           <div style={{ paddingTop: '8px' }}>
             <Text type="secondary" style={{ fontSize: '12px' }}>Добавить другие валюты:</Text>
             <div style={{ marginTop: '8px', maxHeight: '160px', overflowY: 'auto' }}>
               <Space direction="vertical" style={{ width: '100%' }} size="small">
-                {AVAILABLE_CURRENCIES.filter(c => 
-                  !currencySettings.activeCurrencies.includes(c.id) && c.id !== currencySettings.defaultCurrency
+                {currencies.filter(c => 
+                  !c.is_active
                 ).map((currency) => (
                   <div key={currency.id} style={{ 
                     display: 'flex', 
@@ -235,62 +179,25 @@ console.log(currencies)
       {/* Exchange Rates */}
       <Card style={{ marginBottom: '24px' }} title="Курсы валют">
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            padding: '12px', 
-            border: '1px solid #d9d9d9', 
-            borderRadius: '8px' 
-          }}>
-            <div>
-              <Text strong>Синхронизация с курсом Google</Text>
-              <div>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Автоматически обновлять курсы валют
-                </Text>
-              </div>
-            </div>
-            <Switch
-              checked={currencySettings.syncWithGoogle}
-              onChange={handleSyncToggle}
-            />
-          </div>
-
-          {currencySettings.syncWithGoogle && (
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <Text>Корректировка курса</Text>
-              <Space>
-                <Text type="secondary">+</Text>
-                <Input
-                  type="number"
-                  min={0}
-                  max={9}
-                  value={currencySettings.googleRateAdjustment}
-                  onChange={(e) => handleAdjustmentChange(e.target.value)}
-                  style={{ width: '80px' }}
-                />
-                <Text type="secondary">%</Text>
-              </Space>
-            </Space>
-          )}
-
-          {!currencySettings.syncWithGoogle && (
+          {
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Text>Ручной ввод курсов (относительно {AVAILABLE_CURRENCIES.find(c => c.id === currencySettings.defaultCurrency)?.code})</Text>
+              <Text>Ручной ввод курсов (относительно {currencies.find(c => c.id === defaultCurrency)?.code})</Text>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                {currencySettings.activeCurrencies.map((currId) => {
-                  const currency = AVAILABLE_CURRENCIES.find(c => c.id === currId);
+                {currencies
+                .filter(c => c.is_active)
+                .map((currId) => {
+                  const currency = currencies.find(c => c.id === currId.id);
+                  console.log(currency);
                   if (!currency) return null;
                   return (
-                    <Space key={currId} direction="vertical" size="small">
+                    <Space key={currId.id} direction="vertical" size="small">
                       <Text style={{ fontSize: '12px' }}>{currency.code}</Text>
                       <Input
                         type="number"
                         step="0.01"
-                        value={manualRates[currency.code] || 1}
-                        onChange={(e) => handleManualRateChange(currency.code, e.target.value)}
-                        disabled={currId === currencySettings.defaultCurrency}
+                        value={currency.rate}
+                        // onChange={(e) => handleManualRateChange(currency.code, e.target.value)}
+                        disabled={currId.id === defaultCurrency}
                       />
                     </Space>
                   );
@@ -298,13 +205,13 @@ console.log(currencies)
               </div>
               <Button 
                 type="primary"
-                onClick={handleSaveManualRates}
+                // onClick={handleSaveManualRates}
                 style={{ width: '100%', backgroundColor: '#2078F3', borderColor: '#2078F3' }}
               >
                 Сохранить курсы
               </Button>
             </Space>
-          )}
+          }
         </Space>
       </Card>
 
