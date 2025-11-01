@@ -81,6 +81,16 @@ export const categoryAPI = {
     const response = await axiosInstance.delete(`/categories/${id}/`);
     return response.data;
   },
+
+  categoryEmojiList: async () => {
+    const response = await axiosInstance.get('/category-icons/');
+    return response.data;
+  },
+
+  updateCategoryIcon: async (id: number, icon: string) => {
+    const response = await axiosInstance.patch(`/categories/${id}/`, { icon });
+    return response.data;
+  }
 };
 
 // API сервисы для работы с настройками валют

@@ -8,7 +8,6 @@ import {
   Select, 
   Typography,
   Space,
-  Upload as AntUpload
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -20,8 +19,18 @@ import { Category } from '../types';
 
 const { Title, Text } = Typography;
 
-const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '✈️', '☕', '🍔', '🎬', '💰', '🎵', '🏃', '🐕', '🌳'];
-const COLOR_OPTIONS = ['#2078F3', '#3b82f6', '#60a5fa', '#1d4ed8', '#38bdf8', '#0ea5e9', '#93c5fd', '#dbeafe', '#1e3a8a', '#312e81'];
+const COLOR_OPTIONS = [
+  '#FF3B30', // ярко-красный
+  '#FF9500', // оранжевый
+  '#FFCC00', // жёлтый
+  '#34C759', // зелёный
+  '#007AFF', // синий
+  '#5856D6', // фиолетовый
+  '#5AC8FA', // голубой
+  '#AF52DE', // лиловый
+  '#FF2D55', // розовый
+  '#8E8E93'  // серо-графитовый
+];
 
 type ManualRate = {
   id: number;
@@ -37,7 +46,7 @@ export function SettingsPage() {
   
   const { defaultCurrency } = useCurrency();
 
-  const { categories, fetchCategories, deleteCategory: delCategory } = useCategories();
+  const { categories, fetchCategories, deleteCategory: delCategory, updateCategoryIcon, fetchCategoryIcons, categoryIcons } = useCategories();
   const { 
     currency: currencies, 
     fetchCurrency, 
@@ -57,6 +66,7 @@ export function SettingsPage() {
   useEffect(() => {
     fetchCategories();
     fetchCurrency();
+    fetchCategoryIcons();
   }, []);
 
   useEffect(() => {
@@ -143,6 +153,17 @@ export function SettingsPage() {
     }
   };
 
+  const getCategoryIconSymbol = (category: Category) => {
+    const iconId = Number(category.icon);
+
+    if (!Number.isFinite(iconId)) {
+      return category.icon;
+    }
+
+    const matched = categoryIcons.find((icon) => icon.id === iconId);
+    return matched?.emoji ?? matched?.emojy ?? category.icon;
+  };
+
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
@@ -155,7 +176,7 @@ export function SettingsPage() {
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setNewCategoryName(category.name);
-    setNewCategoryIcon(category.icon);
+    setNewCategoryIcon(getCategoryIconSymbol(category));
     setNewCategoryColor(category.color);
   };
 
@@ -164,8 +185,9 @@ export function SettingsPage() {
 
     setEditingCategory(null);
     setNewCategoryName('');
-    setNewCategoryIcon('📦');
-    setNewCategoryColor('#2078F3');
+    setIsAddDialogOpen(false);
+
+    updateCategoryIcon(editingCategory.id, newCategoryIcon);
   };
   
   const selectDefaultCurrency = (id: number) => {
@@ -351,7 +373,7 @@ export function SettingsPage() {
                     backgroundColor: category.color + '20'
                   }}
                 >
-                  <span>{category.icon}</span>
+                  <span>{getCategoryIconSymbol(category)}</span>
                 </div>
                 <Text>{category.name}</Text>
               </Space>
@@ -422,28 +444,33 @@ export function SettingsPage() {
               gap: '8px',
               marginTop: '8px'
             }}>
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setNewCategoryIcon(emoji)}
-                  style={{
-                    padding: '8px',
-                    border: `2px solid ${newCategoryIcon === emoji ? '#2078F3' : '#d9d9d9'}`,
-                    borderRadius: '4px',
-                    backgroundColor: newCategoryIcon === emoji ? '#E8F1FF' : 'white',
-                    cursor: 'pointer',
-                    fontSize: '20px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
+              {categoryIcons.map((icon) => {
+                const emoji = icon.emoji ?? icon.emojy ?? '';
+                if (!emoji) {
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    onClick={() => setNewCategoryIcon(emoji)}
+                    style={{
+                      border: `2px solid ${newCategoryIcon === emoji ? '#2078F3' : '#d9d9d9'}`,
+                      borderRadius: '4px',
+                      backgroundColor: newCategoryIcon === emoji ? '#E8F1FF' : 'white',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
             </div>
           </div>
           
-          <div>
+          {/* <div>
             <Text>Цвет</Text>
             <div style={{ 
               display: 'grid', 
@@ -467,7 +494,7 @@ export function SettingsPage() {
                 />
               ))}
             </div>
-          </div>
+          </div> */}
         </Space>
       </Modal>
     </div>

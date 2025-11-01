@@ -1,10 +1,14 @@
 import { create } from 'zustand';
 import { categoryAPI, currencyAPI, expenseAPI } from '../services/api';
-import { Category, Currency, CurrencyRatePayload, Expense } from '../types';
+import { Category, CategoryIcon, Currency, CurrencyRatePayload, Expense } from '../types';
 
 type CategoriesStore = {
   categories: Category[];
-  
+  categoryIcons: CategoryIcon[];
+
+  fetchCategoryIcons: () => Promise<void>;
+  updateCategoryIcon: (id: number, icon: string) => Promise<void>;
+
   fetchCategories: () => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
 };
@@ -30,7 +34,13 @@ type CurrencyStore = {
 
 export const useCategories = create<CategoriesStore>((set) => ({
   categories: [],
-
+  categoryIcons: [],
+  
+  
+  fetchCategoryIcons: async () => {
+    const data = await categoryAPI.categoryEmojiList();
+    set({ categoryIcons: data });
+  },
   fetchCategories: async () => {
     const data = await categoryAPI.getAll();
     set({ categories: data });
@@ -40,6 +50,15 @@ export const useCategories = create<CategoriesStore>((set) => ({
     await categoryAPI.delete(id);
     set((state) => ({
       categories: state.categories.filter((category) => category.id !== id),
+    }));
+  },
+
+  updateCategoryIcon: async (id: number, icon: string) => {
+    const data = await categoryAPI.updateCategoryIcon(id, icon);
+    set((state) => ({
+      categories: state.categories.map((category) =>
+        category.id === id ? { ...category, icon: data.icon } : category
+      ),
     }));
   }
 }));

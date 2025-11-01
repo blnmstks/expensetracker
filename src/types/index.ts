@@ -28,6 +28,12 @@ export type Category = {
   icon: string;
 };
 
+export type CategoryIcon = {
+  id: number;
+  emoji?: string;
+  emojy?: string;
+};
+
 export type Currency = {
   id: number;
   code: string;
