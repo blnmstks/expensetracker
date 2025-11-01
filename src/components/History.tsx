@@ -3,15 +3,21 @@ import { ru } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
 import { Card, message } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
+import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
 import { useExpenses } from '../store';
 
 export function History() {
   const { expenses, fetchExpenses, deleteExpense } = useExpenses();
+  const { resolveIcon, fetchCategoryIcons } = useCategoryIconResolver();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
+
+  useEffect(() => {
+    fetchCategoryIcons();
+  }, [fetchCategoryIcons]);
 
   const handleDelete = async (expenseId: number) => {
     try {
@@ -34,7 +40,9 @@ export function History() {
       {expenses.length > 0 ? (
         <Card className="border-neutral-100 bg-white/90 shadow-lg ring-1 ring-black/5 backdrop-blur">
             <div className="space-y-3 sm:space-y-4">
-              {expenses.map((expense) => (
+              {expenses.map((expense) => {
+                
+                return(
                   <div
                     key={expense.id}
                     className="relative flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-sm ring-1 ring-black/5 transition-all sm:flex-row sm:items-center"
@@ -45,7 +53,7 @@ export function History() {
                         className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold text-neutral-700"
                         style={{ backgroundColor: expense?.category_detail?.color + '20' }}
                       >
-                        {expense?.category_detail?.icon}
+                        {resolveIcon(expense?.category_detail?.icon ?? expense.category_icon) || '📦'}
                       </div>
                       <div className="min-w-0">
                         <div className="text-neutral-900 font-medium">{expense?.category_detail?.name}</div>
@@ -93,7 +101,7 @@ export function History() {
                   <DeleteOutlined style={{ fontSize: 18 }} />
                 </button>
                   </div>
-                ))}
+                )})}
             </div>
         </Card>
       ) : (

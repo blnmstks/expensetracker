@@ -17,6 +17,7 @@ import {
   DeleteOutlined, 
   MoreOutlined 
 } from '@ant-design/icons';
+import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
 import { useCategories, useCurrency } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
 import { Currency, Expense } from '../types';
@@ -36,16 +37,16 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
   const [category, setCategory] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
-  const { categories, fetchCategories } = useCategories();
+  const { categories, fetchCategories, fetchCategoryIcons } = useCategories();
   const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
-
-  const c = fetchedCurrencies.filter(c => c.is_active);
+  const { resolveCategoryIcon } = useCategoryIconResolver();
 
   // const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
 
   useEffect(() => {
     fetchCategories();
     fetchCurrency();
+    fetchCategoryIcons();
   }, []);
 
 
@@ -162,11 +163,15 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
                 style={{ width: '100%' }}
                 // size="large"
               >
-                {categories.map((cat) => (
-                  <Select.Option key={cat.id} value={cat.id}>
-                    <span>{cat.icon} {cat.name}</span>
-                  </Select.Option>
-                ))}
+                {categories.map((cat) => {
+                  const iconSymbol = resolveCategoryIcon(cat) || '📦';
+
+                  return (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      <span>{iconSymbol} {cat.name}</span>
+                    </Select.Option>
+                  );
+                })}
               </Select>
             </div>
 
@@ -220,6 +225,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {expenses.slice(0, 10).map((expense) => {
               const cat = getCategoryById(expense.category);
+              const iconSymbol = resolveCategoryIcon(cat) || '📦';
               return (
                 <div
                   key={expense.id}
@@ -244,7 +250,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
                         flexShrink: 0
                       }}
                     >
-                      <span>{cat?.icon}</span>
+                      <span>{iconSymbol}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 500 }}>{cat?.name}</div>

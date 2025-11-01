@@ -14,6 +14,7 @@ import {
   DeleteOutlined, 
   EditOutlined, 
 } from '@ant-design/icons';
+import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
 import { useCategories, useCurrency } from '../store';
 import { Category } from '../types';
 
@@ -47,6 +48,7 @@ export function SettingsPage() {
   const { defaultCurrency } = useCurrency();
 
   const { categories, fetchCategories, deleteCategory: delCategory, updateCategoryIcon, fetchCategoryIcons, categoryIcons } = useCategories();
+  const { resolveCategoryIcon, resolveIcon } = useCategoryIconResolver();
   const { 
     currency: currencies, 
     fetchCurrency, 
@@ -153,17 +155,6 @@ export function SettingsPage() {
     }
   };
 
-  const getCategoryIconSymbol = (category: Category) => {
-    const iconId = Number(category.icon);
-
-    if (!Number.isFinite(iconId)) {
-      return category.icon;
-    }
-
-    const matched = categoryIcons.find((icon) => icon.id === iconId);
-    return matched?.emoji ?? matched?.emojy ?? category.icon;
-  };
-
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
@@ -176,7 +167,7 @@ export function SettingsPage() {
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setNewCategoryName(category.name);
-    setNewCategoryIcon(getCategoryIconSymbol(category));
+    setNewCategoryIcon(resolveCategoryIcon(category) || '📦');
     setNewCategoryColor(category.color);
   };
 
@@ -373,7 +364,7 @@ export function SettingsPage() {
                     backgroundColor: category.color + '20'
                   }}
                 >
-                  <span>{getCategoryIconSymbol(category)}</span>
+                  <span>{resolveCategoryIcon(category)}</span>
                 </div>
                 <Text>{category.name}</Text>
               </Space>
@@ -445,7 +436,7 @@ export function SettingsPage() {
               marginTop: '8px'
             }}>
               {categoryIcons.map((icon) => {
-                const emoji = icon.emoji ?? icon.emojy ?? '';
+                const emoji = resolveIcon(icon.id);
                 if (!emoji) {
                   return null;
                 }
