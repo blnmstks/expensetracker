@@ -45,10 +45,10 @@ export function History() {
                 return(
                   <div
                     key={expense.id}
-                    className="relative flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-sm ring-1 ring-black/5 transition-all sm:flex-row sm:items-center"
+                    className="relative flex flex-col gap-6 rounded-2xl border border-neutral-200/80 bg-white/95 px-4 pb-14 pt-4 shadow-sm ring-1 ring-black/5 transition-all sm:flex-row sm:items-center sm:gap-8"
                   >
                     {/* Icon and Category */}
-                    <div className="flex items-center gap-3 sm:w-60 mr-8">
+                    <div className="flex items-center gap-3 sm:w-60 sm:flex-none">
                       <div
                         className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold text-neutral-700"
                         style={{ backgroundColor: expense?.category_detail?.color + '20' }}
@@ -63,10 +63,9 @@ export function History() {
                       </div>
                     </div>
 
-                    {/* <div className="flex w-full flex-wrap gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6"> */}
-                    <div className="flex sm:justify-between">
+                    <div className="flex flex-1 flex-col gap-4 pr-4 sm:flex-row sm:items-center sm:gap-8 sm:pr-20 lg:gap-10">
                       {/* Amounts */}
-                      <div className="flex flex-wrap w-full justify-between gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
+                      <div className="flex flex-wrap gap-6 sm:flex-1 sm:flex-nowrap sm:justify-start sm:gap-8 lg:gap-10">
                         {expense?.conversions?.map((conv) => (
                           <div key={conv.currency_code}>
                             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500 text-center">
@@ -80,7 +79,7 @@ export function History() {
                       </div>
 
                       {/* Comment */}
-                      <div className="min-w-0 text-sm text-neutral-600">
+                      <div className="min-w-0 text-sm text-neutral-600 pr-4 sm:flex-1 sm:max-w-md sm:pl-8 sm:pr-14 lg:pr-20">
                         {expense.comment && (
                           <>
                             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
