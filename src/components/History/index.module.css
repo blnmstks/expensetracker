@@ -1,0 +1,40 @@
+.listItem {
+    display: flex;
+    align-items: center;
+    border: 1px solid grey;
+    padding: 8px;
+}
+
+.iconBlock {
+    display: flex;
+    flex: 1;
+    padding: 8px;
+    align-items: center;
+    gap: 16px;
+}
+
+.categoryDate {
+    display: flex;
+    flex-direction: column;
+}
+
+.currenciesComment {
+    padding: 8px;
+    display: flex;
+    justify-content: space-around;
+    flex: 4;
+
+    div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+.deleteBlock {
+    padding: 8px;
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
