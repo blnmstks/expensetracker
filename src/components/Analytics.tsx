@@ -238,7 +238,9 @@ export function Analytics() {
           <Select
             value={selectedCurrency ?? defaultCurrency?.id}
             onChange={setSelectedCurrency}
-            options={currencies.map((currency) => ({
+            options={currencies
+              .filter((currency) => currency.is_active)
+              .map((currency) => ({
               value: currency.id,
               label: `${currency.symbol} ${currency.code}`,
             }))}

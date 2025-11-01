@@ -259,7 +259,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
                       </Text>
                       {expense.comment && (
                         <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {expense.comment}
+                          {expense.comment ?? ''}
                         </div>
                       )}
                     </div>

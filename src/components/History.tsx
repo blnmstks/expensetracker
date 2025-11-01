@@ -48,7 +48,7 @@ export function History() {
                     className="relative flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-sm ring-1 ring-black/5 transition-all sm:flex-row sm:items-center"
                   >
                     {/* Icon and Category */}
-                    <div className="flex items-center gap-3 sm:w-60">
+                    <div className="flex items-center gap-3 sm:w-60 mr-8">
                       <div
                         className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold text-neutral-700"
                         style={{ backgroundColor: expense?.category_detail?.color + '20' }}
@@ -63,7 +63,8 @@ export function History() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
+                    {/* <div className="flex w-full flex-wrap gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6"> */}
+                    <div className="flex sm:justify-between">
                       {/* Amounts */}
                       <div className="flex flex-wrap w-full justify-between gap-8 text-sm sm:flex-nowrap sm:items-center sm:gap-6">
                         {expense?.conversions?.map((conv) => (
