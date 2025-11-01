@@ -72,7 +72,10 @@ export const useExpenses = create<ExpensesStore>((set) => ({
     const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 0, 0, 0).toISOString();
     const end = new Date().toISOString();
     const data = await expenseAPI.getByPeriod();
-    set({ expenses : data });
+    const sorted = [...data].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    set({ expenses: sorted });
   },
 
   deleteExpense: async (id) => {

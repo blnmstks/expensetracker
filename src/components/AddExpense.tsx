@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
@@ -10,17 +10,16 @@ import {
   message, 
   Typography, 
   Space,
-  Dropdown,
 } from 'antd';
 import { 
   CalendarOutlined, 
-  DeleteOutlined, 
-  MoreOutlined 
+  DeleteOutlined
 } from '@ant-design/icons';
 import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
 import { useCategories, useCurrency } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
 import { Currency, Expense } from '../types';
+import type { SelectProps } from 'antd';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -98,6 +97,29 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
     }
   }, [categories]);
 
+  const categoryOptions = useMemo<SelectProps<number>['options']>(() => {
+    return categories.map((cat) => {
+      const iconSymbol = resolveCategoryIcon(cat) || '📦';
+
+      return {
+        value: cat.id,
+        label: (
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 20, lineHeight: 1 }}>{iconSymbol}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>{cat.name}</span>
+          </span>
+        ),
+        searchLabel: `${cat.name}`.toLowerCase(),
+      };
+    });
+  }, [categories, resolveCategoryIcon]);
+
   return (
     <div style={{ maxWidth: '768px', margin: '0 auto' }}>
       <Card title="Добавить расход" style={{ marginBottom: '24px' }}>
@@ -158,21 +180,27 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
             <div>
               <Text style={{ display: 'block', marginBottom: '8px' }}>Категория</Text>
               <Select<number>
-                value={category ?? undefined} 
+                showSearch
+                size="large"
+                placeholder="Выберите категорию"
+                value={category ?? undefined}
                 onChange={(value) => setCategory(value)}
                 style={{ width: '100%' }}
-                // size="large"
-              >
-                {categories.map((cat) => {
-                  const iconSymbol = resolveCategoryIcon(cat) || '📦';
-
-                  return (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      <span>{iconSymbol} {cat.name}</span>
-                    </Select.Option>
-                  );
-                })}
-              </Select>
+                options={categoryOptions}
+                filterOption={(input, option) => {
+                  const normalizedInput = input.trim().toLowerCase();
+                  if (!normalizedInput) {
+                    return true;
+                  }
+                  const searchSource = (option?.searchLabel as string | undefined) ?? '';
+                  return searchSource.includes(normalizedInput);
+                }}
+                filterSort={(optionA, optionB) =>
+                  ((optionA?.searchLabel as string | undefined) || '').localeCompare(
+                    (optionB?.searchLabel as string | undefined) || ''
+                  )
+                }
+              />
             </div>
 
             <div>
