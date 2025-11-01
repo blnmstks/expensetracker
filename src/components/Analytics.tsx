@@ -114,9 +114,9 @@ export function Analytics() {
       return amount;
     }
     return amount.toLocaleString('ru-RU', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).replace(',', '.');
   };
 
   const categoryRows = useMemo(() => {
