@@ -4,7 +4,8 @@ import { getCookie } from './cookie';
 
 // Экземпляр axios с базовыми настройками
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  // Используем относительный путь для работы через Vite proxy
+  baseURL: '/api',
   timeout: 10000, // 10 секунд
   headers: {
     'Content-Type': 'application/json',
@@ -18,11 +19,18 @@ const axiosInstance = axios.create({
 // Interceptor для добавления токена авторизации к каждому запросу
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Получаем JWT токен из localStorage, если он есть
-    const token = localStorage.getItem('authToken');
+    // Получаем session token из localStorage
+    const token = localStorage.getItem('auth_token');
+    
+    // console.log(`🔵 REQUEST: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    // console.log('📤 Headers:', {
+    //   'X-Session-Token': token ? '***' + token.slice(-8) : 'not set',
+    //   'X-CSRFToken': getCookie('csrftoken') ? '***' : 'not set',
+    // });
     
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Для django-allauth headless используем X-Session-Token
+      config.headers['X-Session-Token'] = token;
     }
     
     // Для Django Session Auth: добавляем CSRF токен
@@ -30,7 +38,6 @@ axiosInstance.interceptors.request.use(
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
     }
-    
     return config;
   },
   (error) => {
@@ -55,14 +62,14 @@ axiosInstance.interceptors.response.use(
       switch (status) {
         case 401:
           console.error('❌ 401 Unauthorized: Требуется авторизация');
-          localStorage.removeItem('authToken');
+          localStorage.removeItem('auth_token');
+          // Перенаправляем на страницу входа, если не на странице авторизации
+          if (!window.location.pathname.includes('/login') && window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
           break;
         case 403:
           console.error('❌ 403 Forbidden: Доступ запрещен');
-          console.error('Возможные причины:');
-          console.error('- Отсутствует CSRF токен');
-          console.error('- CORS не настроен на бэкенде');
-          console.error('- Нужна сессия/авторизация');
           break;
         case 404:
           console.error('❌ 404 Not Found: Endpoint не найден');
@@ -86,20 +93,5 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Функция для получения CSRF токена с сервера
-export const fetchCSRFToken = async (): Promise<void> => {
-  try {
-    // Django обычно отдаёт CSRF токен при первом запросе
-    // Можно сделать запрос на любой safe endpoint (GET)
-    await axiosInstance.get('/csrf/', { 
-      withCredentials: true 
-    });
-    console.log('✅ CSRF токен получен');
-  } catch (error) {
-    console.warn('⚠️ Не удалось получить CSRF токен:', error);
-    // Не критично, продолжаем работу
-  }
-};
 
 export default axiosInstance;

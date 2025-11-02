@@ -57,6 +57,12 @@ export function MainLayout({
       icon: <SettingOutlined />,
       label: 'Настройки',
     },
+    // {
+    //   key: 'test-api',
+    //   icon: <WalletOutlined />,
+    //   label: '🧪 Test API',
+    //   style: { borderTop: '1px solid #f0f0f0', marginTop: '8px', paddingTop: '8px' },
+    // },
   ];
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {

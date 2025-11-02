@@ -71,7 +71,7 @@ export const useExpenses = create<ExpensesStore>((set) => ({
   fetchExpenses: async () => {
     const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1, 0, 0, 0).toISOString();
     const end = new Date().toISOString();
-    const data = await expenseAPI.getByPeriod();
+    const data = await expenseAPI.getAll();
     const sorted = [...data].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
@@ -101,8 +101,8 @@ export const useCurrency = create<CurrencyStore>((set) => ({
   },
 
   fetchDefaultCurrency: async () => {
-    const data = await currencyAPI.getDefaultCurrency();
-    set({ defaultCurrency: data.id });
+      const data = await currencyAPI.getDefaultCurrency();
+      set({ defaultCurrency: data.id });
   },
 
   setDefaultCurrency: async (id: number) => {
