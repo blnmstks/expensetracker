@@ -6,8 +6,9 @@ type CategoriesStore = {
   categories: Category[];
   categoryIcons: CategoryIcon[];
 
+  createCategory: (category: Omit<Category, 'id'>) => Promise<void>;
   fetchCategoryIcons: () => Promise<void>;
-  updateCategoryIcon: (id: number, icon: string) => Promise<void>;
+  updateCategoryIcon: (id: number, icon: string, name: string) => Promise<void>;
 
   fetchCategories: () => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
@@ -36,7 +37,13 @@ export const useCategories = create<CategoriesStore>((set) => ({
   categories: [],
   categoryIcons: [],
   
-  
+  createCategory: async (category: Omit<Category, 'id'>) => {
+    const data = await categoryAPI.create(category);
+    set((state) => ({
+      categories: [...state.categories, data],
+    }));
+  },
+
   fetchCategoryIcons: async () => {
     const data = await categoryAPI.categoryEmojiList();
     set({ categoryIcons: data });
@@ -53,11 +60,11 @@ export const useCategories = create<CategoriesStore>((set) => ({
     }));
   },
 
-  updateCategoryIcon: async (id: number, icon: string) => {
-    const data = await categoryAPI.updateCategoryIcon(id, icon);
+  updateCategoryIcon: async (id: number, icon: string, name: string) => {
+    const data = await categoryAPI.updateCategoryIcon(id, icon, name);
     set((state) => ({
       categories: state.categories.map((category) =>
-        category.id === id ? { ...category, icon: data.icon } : category
+        category.id === id ? { ...category, icon: data.icon, name: data.name } : category
       ),
     }));
   }

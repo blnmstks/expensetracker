@@ -47,7 +47,7 @@ export function SettingsPage() {
   
   const { defaultCurrency } = useCurrency();
 
-  const { categories, fetchCategories, deleteCategory: delCategory, updateCategoryIcon, fetchCategoryIcons, categoryIcons } = useCategories();
+  const { categories, fetchCategories, deleteCategory: delCategory, updateCategoryIcon, fetchCategoryIcons, categoryIcons, createCategory } = useCategories();
   const { resolveCategoryIcon, resolveIcon } = useCategoryIconResolver();
   const { 
     currency: currencies, 
@@ -92,20 +92,6 @@ export function SettingsPage() {
     });
   }, [activeCurrencies]);
 
-  const normalizeRate = (value: string) => {
-    const sanitized = value.replace(',', '.').trim();
-    if (sanitized === '') {
-      return '';
-    }
-
-    const parsed = Number.parseFloat(sanitized);
-    if (!Number.isFinite(parsed)) {
-      return '';
-    }
-
-    return parsed.toFixed(6);
-  };
-
   const handleManualRateChange = (id: number, rawValue: string) => {
     const sanitized = rawValue.replace(',', '.');
 
@@ -128,20 +114,11 @@ export function SettingsPage() {
     setIsSavingRates(true);
 
     try {
-      const ratesToPersist = manualRates
-        .filter((rate) => rate.id !== defaultCurrency)
-        .map((rate) => ({
-          id: rate.id,
-          rate: normalizeRate(rate.rate) || normalizeRate(
-            currencies.find((currency) => currency.id === rate.id)?.rate ?? '',
-          ),
-        }))
-        .filter((rate): rate is ManualRate => Boolean(rate && rate.rate));
+      const ratesToPersist = manualRates.filter((rate) => rate.id !== defaultCurrency)
 
       if (!ratesToPersist.length) {
         return;
       }
-
       await setCurrencyRates(ratesToPersist);
 
       setManualRates((previous) =>
@@ -158,9 +135,11 @@ export function SettingsPage() {
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    setNewCategoryName('');
-    setNewCategoryIcon('📦');
-    setNewCategoryColor('#2078F3');
+    createCategory({
+      name: newCategoryName,
+      icon: newCategoryIcon,
+      color: '#3B82F6',
+    });
     setIsAddDialogOpen(false);
   };
 
@@ -177,8 +156,8 @@ export function SettingsPage() {
     setEditingCategory(null);
     setNewCategoryName('');
     setIsAddDialogOpen(false);
-
-    updateCategoryIcon(editingCategory.id, newCategoryIcon);
+    
+    updateCategoryIcon(editingCategory.id, newCategoryIcon, newCategoryName);
   };
   
   const selectDefaultCurrency = (id: number) => {
@@ -299,7 +278,7 @@ export function SettingsPage() {
                       <Text style={{ fontSize: '12px' }}>{currency.code}</Text>
                       <Input
                         type="number"
-                        step="0.000001"
+                        step="0.01"
                         value={manualRate?.rate ?? ''}
                         onChange={(e) => handleManualRateChange(currency.id, e.target.value)}
                         disabled={currId.id === defaultCurrency}
@@ -332,9 +311,9 @@ export function SettingsPage() {
               icon={<PlusOutlined />}
               onClick={() => setIsAddDialogOpen(true)}
               style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
-            >
-              Добавить
-            </Button>
+            />
+              {/* Добавить */}
+            {/* </Button> */}
           </div>
         }
       >

@@ -87,8 +87,8 @@ export const categoryAPI = {
     return response.data;
   },
 
-  updateCategoryIcon: async (id: number, icon: string) => {
-    const response = await axiosInstance.patch(`/categories/${id}/`, { icon });
+  updateCategoryIcon: async (id: number, icon: string, name: string) => {
+    const response = await axiosInstance.patch(`/categories/${id}/`, { icon, name });
     return response.data;
   }
 };
