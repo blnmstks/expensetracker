@@ -32,12 +32,17 @@ interface AddExpenseProps {
 
 export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<Currency>({id: 1, code: 'USD', symbol: '$', name: 'US Dollar'});
+  const [currency, setCurrency] = useState<Currency | null>(null);
   const [category, setCategory] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
   const { categories, fetchCategories, fetchCategoryIcons } = useCategories();
-  const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
+  const { 
+    currency: fetchedCurrencies, 
+    fetchCurrency,
+    defaultCurrency,
+    fetchDefaultCurrency,
+  } = useCurrency();
   const { resolveCategoryIcon } = useCategoryIconResolver();
 
   // const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
@@ -45,9 +50,29 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
   useEffect(() => {
     fetchCategories();
     fetchCurrency();
+    fetchDefaultCurrency();
     fetchCategoryIcons();
   }, []);
 
+  useEffect(() => {
+    if (!fetchedCurrencies.length) {
+      return;
+    }
+
+    setCurrency((prev) => {
+      if (prev && fetchedCurrencies.some((curr) => curr.id === prev.id)) {
+        return prev;
+      }
+
+      const defaultCurr =
+        fetchedCurrencies.find((curr) => curr.id === defaultCurrency) ||
+        fetchedCurrencies.find((curr) => curr.is_default) ||
+        fetchedCurrencies.find((curr) => curr.is_active) ||
+        fetchedCurrencies[0];
+
+      return defaultCurr ?? prev;
+    });
+  }, [defaultCurrency, fetchedCurrencies]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +89,11 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
     const categoryId = category ?? categories[0]?.id;
     if (!categoryId) {
       message.error('Выберите категорию');
+      return;
+    }
+
+    if (!currency) {
+      message.error('Выберите валюту');
       return;
     }
 
@@ -144,7 +174,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpen
                     <Button
                       key={curr.id}
                       type={currency?.id === curr.id ? 'primary' : 'default'}
-                      onClick={() => setCurrency({id: curr.id, code: curr.code, symbol: curr.symbol, name: curr.name})}
+                      onClick={() => setCurrency(curr)}
                       size="large"
                       style={{
                         minWidth: '48px',

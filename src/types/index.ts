@@ -43,6 +43,8 @@ export type Currency = {
   is_active: boolean;
   is_personal: boolean;
   is_default?: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type CurrencyRatePayload = {
