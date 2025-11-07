@@ -9,14 +9,13 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import type { Expense, CurrencySettings } from '../../App';
+import { Expense } from '../../types';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 interface MainLayoutProps {
   expenses: Expense[];
-  currencySettings: CurrencySettings;
   onLogout: () => void;
 }
 
@@ -58,6 +57,12 @@ export function MainLayout({
       icon: <SettingOutlined />,
       label: 'Настройки',
     },
+    // {
+    //   key: 'test-api',
+    //   icon: <WalletOutlined />,
+    //   label: '🧪 Test API',
+    //   style: { borderTop: '1px solid #f0f0f0', marginTop: '8px', paddingTop: '8px' },
+    // },
   ];
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
@@ -146,18 +151,47 @@ export function MainLayout({
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
               background: '#fff',
               borderBottom: '1px solid #f0f0f0',
               padding: '0 16px',
+              gap: 12,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                minWidth: 0,
+              }}
+            >
               <WalletOutlined style={{ fontSize: 24, color: '#2078F3' }} />
-              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: '#111827',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 Трекер расходов
               </h1>
             </div>
+            <Button
+              type="primary"
+              ghost
+              size="small"
+              icon={<LogoutOutlined />}
+              onClick={onLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                borderRadius: 999,
+              }}
+            />
           </Header>
         )}
 

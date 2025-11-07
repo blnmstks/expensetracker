@@ -6,11 +6,7 @@ import axiosInstance from '../lib/axios';
 
 const { Title, Text } = Typography;
 
-interface LoginProps {
-  onLoginSuccess: () => void;
-}
-
-export function Login({ onLoginSuccess }: LoginProps) {
+export function Login() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -27,18 +23,14 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
       if (response?.success) {
         const token = response?.data?.meta?.session_token;
-        const isAuth = response.data?.meta?.is_authenticated ?? true;
+        const isAuth = response.data?.meta?.is_authenticated;
         
         if (isAuth) {
           message.success('Вход выполнен успешно!');
-          onLoginSuccess();
           localStorage.setItem('auth_token', token);
           
-          try {
-            axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          } catch (e) {
-            console.error('Error setting auth header:', e);
-          }
+          // Перенаправляем на страницу расходов
+          window.location.href = '/expenses';
           return;
         }
       }
