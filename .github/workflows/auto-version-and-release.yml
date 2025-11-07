@@ -91,6 +91,7 @@ jobs:
           version: expense-tracker@${{ steps.version.outputs.new_version }}
           sourcemaps: './dist'
           finalize: true
+          set_commits: skip
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
