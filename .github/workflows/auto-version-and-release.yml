@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   version-and-release:
-    # Запускаем только если коммит НЕ от бота (чтобы избежать бесконечного цикла)
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     
@@ -20,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,18 +27,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
       
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
       - name: Get commit message and determine version bump
         id: bump_type
         run: |
           COMMIT_MSG="${{ github.event.head_commit.message }}"
           echo "Commit message: $COMMIT_MSG"
           
-          # Проверяем сообщение коммита на ключевые слова
           if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]] || [[ "$COMMIT_MSG" == *"major"* ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
             echo "🔼 Version bump: MAJOR"
@@ -61,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Bump version
+      - name: Bump version (locally only)
         id: version
         run: |
           npm version ${{ steps.bump_type.outputs.type }} --no-git-tag-version
@@ -69,32 +62,12 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "✨ New version: $NEW_VERSION"
       
-      - name: Check if version changed
-        id: check_version
-        run: |
-          if [ "${{ steps.current_version.outputs.current }}" != "${{ steps.version.outputs.new_version }}" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Version changed!"
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "Version unchanged, skipping..."
-          fi
-      
-      - name: Commit version bump
-        if: steps.check_version.outputs.changed == 'true'
-        run: |
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
-          git push origin dev
-      
       - name: Create and push tag
-        if: steps.check_version.outputs.changed == 'true'
         run: |
           git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
           git push origin "v${{ steps.version.outputs.new_version }}"
       
       - name: Build application
-        if: steps.check_version.outputs.changed == 'true'
         env:
           NODE_ENV: production
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -102,7 +75,7 @@ jobs:
         run: npm run build:prod
       
       - name: Create Sentry release
-        if: steps.check_version.outputs.changed == 'true' && env.SENTRY_AUTH_TOKEN != ''
+        if: env.SENTRY_AUTH_TOKEN != ''
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -115,7 +88,6 @@ jobs:
           finalize: true
       
       - name: Create GitHub Release
-        if: steps.check_version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.new_version }}
@@ -135,4 +107,4 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
