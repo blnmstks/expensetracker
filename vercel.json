@@ -8,5 +8,7 @@
       "destination": "/index.html"
     }
   ],
-  "env": "production"
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
