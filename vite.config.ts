@@ -10,16 +10,11 @@ export default defineConfig({
     project: "javascript-react",
     disable: process.env.NODE_ENV !== 'production',
     release: {
-      name: `expense-tracker@${packageJson.version}`,
-      uploadSourceMaps: true,
+      create: false,
     },
     sourcemaps: {
       assets: './dist/**',
       ignore: ['node_modules/**'],
-    },
-    cleanArtifacts: true,
-    setCommits: {
-        auto: true,
     },
   })],
 
