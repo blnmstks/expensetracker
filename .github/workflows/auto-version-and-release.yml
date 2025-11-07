@@ -67,11 +67,6 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "✨ New version: $NEW_VERSION"
       
-      - name: Create and push tag
-        run: |
-          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
-          git push origin "v${{ steps.version.outputs.new_version }}"
-      
       - name: Build application
         env:
           NODE_ENV: production
@@ -93,7 +88,39 @@ jobs:
           finalize: true
           set_commits: skip
       
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.new_version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag v${{ steps.version.outputs.new_version }} already exists, skipping..."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag v${{ steps.version.outputs.new_version }} will be created"
+          fi
+      
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          git push origin "v${{ steps.version.outputs.new_version }}"
+          echo "✅ Tag v${{ steps.version.outputs.new_version }} created and pushed"
+      
+      - name: Check if GitHub release exists
+        id: check_release
+        run: |
+          if gh release view "v${{ steps.version.outputs.new_version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Release v${{ steps.version.outputs.new_version }} already exists, skipping..."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Release v${{ steps.version.outputs.new_version }} will be created"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.new_version }}
@@ -114,3 +141,13 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 📊 Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.current_version.outputs.current }} → ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Bump type:** ${{ steps.bump_type.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag created:** ${{ steps.check_tag.outputs.exists == 'false' && '✅ Yes' || '⚠️ Already exists' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release created:** ${{ steps.check_release.outputs.exists == 'false' && '✅ Yes' || '⚠️ Already exists' }}" >> $GITHUB_STEP_SUMMARY
