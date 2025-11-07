@@ -1,8 +1,7 @@
 name: Auto Version and Sentry Release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - dev
 
@@ -12,7 +11,8 @@ permissions:
 
 jobs:
   version-and-release:
-    if: github.event.pull_request.merged == true
+    # Запускаем только если коммит НЕ от бота (чтобы избежать бесконечного цикла)
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     
     steps:
@@ -20,8 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-          ref: dev
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -34,16 +33,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       
-      - name: Determine version bump type
+      - name: Get commit message and determine version bump
         id: bump_type
         run: |
-          LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
-          echo "📋 PR Labels: $LABELS"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Commit message: $COMMIT_MSG"
           
-          if [[ "$LABELS" == *"major"* ]]; then
+          # Проверяем сообщение коммита на ключевые слова
+          if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]] || [[ "$COMMIT_MSG" == *"major"* ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
             echo "🔼 Version bump: MAJOR"
-          elif [[ "$LABELS" == *"minor"* ]]; then
+          elif [[ "$COMMIT_MSG" == *"feat:"* ]] || [[ "$COMMIT_MSG" == *"minor"* ]]; then
             echo "type=minor" >> $GITHUB_OUTPUT
             echo "🔼 Version bump: MINOR"
           else
@@ -69,131 +69,40 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "✨ New version: $NEW_VERSION"
       
-      - name: Create temporary branch with version bump
+      - name: Check if version changed
+        id: check_version
         run: |
-          TEMP_BRANCH="version-bump-${{ github.run_id }}"
-          echo "🌿 Creating temporary branch: $TEMP_BRANCH"
-          
-          git checkout -b $TEMP_BRANCH
+          if [ "${{ steps.current_version.outputs.current }}" != "${{ steps.version.outputs.new_version }}" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Version changed!"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged, skipping..."
+          fi
+      
+      - name: Commit version bump
+        if: steps.check_version.outputs.changed == 'true'
+        run: |
           git add package.json package-lock.json
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
-          git push origin $TEMP_BRANCH
-          
-          echo "temp_branch=$TEMP_BRANCH" >> $GITHUB_OUTPUT
-        id: temp_branch
-      
-      - name: Merge version bump to dev via API
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PAT_TOKEN }}
-          script: |
-            const tempBranch = 'version-bump-${{ github.run_id }}';
-            const version = '${{ steps.version.outputs.new_version }}';
-            
-            console.log(`🔀 Merging ${tempBranch} into dev...`);
-            
-            try {
-              // Merge using API (bypasses branch protection)
-              const { data: merge } = await github.rest.repos.merge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base: 'dev',
-                head: tempBranch,
-                commit_message: `chore: bump version to ${version} [skip ci]`
-              });
-              
-              console.log('✅ Merged successfully:', merge.sha);
-              
-              // Delete temporary branch
-              await github.rest.git.deleteRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `heads/${tempBranch}`
-              });
-              
-              console.log('🗑️  Temporary branch deleted');
-            } catch (error) {
-              console.error('❌ Merge failed:', error.message);
-              
-              // Try to delete branch anyway
-              try {
-                await github.rest.git.deleteRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `heads/${tempBranch}`
-                });
-              } catch (e) {
-                console.error('Failed to delete temp branch:', e.message);
-              }
-              
-              throw error;
-            }
+          git push origin dev
       
       - name: Create and push tag
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PAT_TOKEN }}
-          script: |
-            const version = '${{ steps.version.outputs.new_version }}';
-            const tagName = `v${version}`;
-            
-            console.log(`🏷️  Creating tag: ${tagName}`);
-            
-            try {
-              // Get latest commit SHA on dev
-              const { data: refData } = await github.rest.git.getRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: 'heads/dev'
-              });
-              
-              // Create annotated tag
-              const { data: tag } = await github.rest.git.createTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tagName,
-                message: `Release ${tagName}`,
-                object: refData.object.sha,
-                type: 'commit'
-              });
-              
-              // Create tag reference
-              await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `refs/tags/${tagName}`,
-                sha: tag.sha
-              });
-              
-              console.log('✅ Tag created successfully');
-            } catch (error) {
-              if (error.message.includes('already exists')) {
-                console.log('⚠️  Tag already exists, skipping...');
-              } else {
-                throw error;
-              }
-            }
-      
-      - name: Checkout updated dev
-        uses: actions/checkout@v4
-        with:
-          ref: dev
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-      
-      - name: Install dependencies for build
-        run: npm ci
+        if: steps.check_version.outputs.changed == 'true'
+        run: |
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+          git push origin "v${{ steps.version.outputs.new_version }}"
       
       - name: Build application
+        if: steps.check_version.outputs.changed == 'true'
         env:
           NODE_ENV: production
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: |
-          echo "🔨 Building application..."
-          npm run build:prod
+        run: npm run build:prod
       
       - name: Create Sentry release
+        if: steps.check_version.outputs.changed == 'true' && env.SENTRY_AUTH_TOKEN != ''
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -204,9 +113,9 @@ jobs:
           version: expense-tracker@${{ steps.version.outputs.new_version }}
           sourcemaps: './dist'
           finalize: true
-        continue-on-error: true
       
       - name: Create GitHub Release
+        if: steps.check_version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.new_version }}
@@ -214,17 +123,16 @@ jobs:
           body: |
             ## 🚀 Release v${{ steps.version.outputs.new_version }}
             
-            **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
-            **Author:** @${{ github.event.pull_request.user.login }}
-            **Version:** ${{ steps.current_version.outputs.current }} → ${{ steps.version.outputs.new_version }}
-            **Bump Type:** ${{ steps.bump_type.outputs.type }}
+            **Previous version:** ${{ steps.current_version.outputs.current }}
+            **New version:** ${{ steps.version.outputs.new_version }}
+            **Bump type:** ${{ steps.bump_type.outputs.type }}
             
-            ### 📝 Changes
-            ${{ github.event.pull_request.body }}
+            ### Changes
+            ${{ github.event.head_commit.message }}
             
-            ---
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.current_version.outputs.current }}...v${{ steps.version.outputs.new_version }}
+            **Commit:** ${{ github.sha }}
+            **Author:** @${{ github.event.head_commit.author.username }}
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
