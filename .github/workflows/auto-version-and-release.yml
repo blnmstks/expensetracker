@@ -6,9 +6,12 @@ on:
     branches:
       - dev
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   version-and-release:
-    # Запускается только если PR был смержен
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     
@@ -18,6 +21,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
+          ref: dev
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,12 +32,11 @@ jobs:
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       
       - name: Determine version bump type
         id: bump_type
         run: |
-          # Определяем тип бампа версии по labels PR
           LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
           
           if [[ "$LABELS" == *"major"* ]]; then
@@ -44,27 +47,153 @@ jobs:
             echo "type=patch" >> $GITHUB_OUTPUT
           fi
       
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Install dependencies
+        run: npm ci
+      
       - name: Bump version
         id: version
         run: |
           npm version ${{ steps.bump_type.outputs.type }} --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "New version: $NEW_VERSION"
       
-      - name: Commit version bump
+      - name: Get file contents
+        id: files
         run: |
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
-          git push origin dev
+          PACKAGE_JSON=$(cat package.json | base64 -w 0)
+          PACKAGE_LOCK=$(cat package-lock.json | base64 -w 0)
+          echo "package_json=$PACKAGE_JSON" >> $GITHUB_OUTPUT
+          echo "package_lock=$PACKAGE_LOCK" >> $GITHUB_OUTPUT
       
-      - name: Create and push tag
-        run: |
-          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
-          git push origin "v${{ steps.version.outputs.new_version }}"
+      - name: Commit version bump via API
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const version = '${{ steps.version.outputs.new_version }}';
+            
+            // Get current commit SHA
+            const { data: refData } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/dev'
+            });
+            
+            const currentCommitSha = refData.object.sha;
+            
+            // Get current tree
+            const { data: commitData } = await github.rest.git.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: currentCommitSha
+            });
+            
+            // Create blobs for updated files
+            const packageJsonContent = Buffer.from('${{ steps.files.outputs.package_json }}', 'base64').toString('utf-8');
+            const packageLockContent = Buffer.from('${{ steps.files.outputs.package_lock }}', 'base64').toString('utf-8');
+            
+            const { data: packageJsonBlob } = await github.rest.git.createBlob({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: packageJsonContent,
+              encoding: 'utf-8'
+            });
+            
+            const { data: packageLockBlob } = await github.rest.git.createBlob({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              content: packageLockContent,
+              encoding: 'utf-8'
+            });
+            
+            // Create new tree
+            const { data: newTree } = await github.rest.git.createTree({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base_tree: commitData.tree.sha,
+              tree: [
+                {
+                  path: 'package.json',
+                  mode: '100644',
+                  type: 'blob',
+                  sha: packageJsonBlob.sha
+                },
+                {
+                  path: 'package-lock.json',
+                  mode: '100644',
+                  type: 'blob',
+                  sha: packageLockBlob.sha
+                }
+              ]
+            });
+            
+            // Create new commit
+            const { data: newCommit } = await github.rest.git.createCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              message: `chore: bump version to ${version} [skip ci]`,
+              tree: newTree.sha,
+              parents: [currentCommitSha]
+            });
+            
+            // Update reference
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/dev',
+              sha: newCommit.sha,
+              force: false
+            });
+            
+            console.log('Version bump committed:', newCommit.sha);
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Create and push tag via API
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const version = '${{ steps.version.outputs.new_version }}';
+            const tagName = `v${version}`;
+            
+            // Get latest commit SHA on dev
+            const { data: refData } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/dev'
+            });
+            
+            // Create tag object
+            const { data: tag } = await github.rest.git.createTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tagName,
+              message: `Release ${tagName}`,
+              object: refData.object.sha,
+              type: 'commit'
+            });
+            
+            // Create reference
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tagName}`,
+              sha: tag.sha
+            });
+            
+            console.log('Tag created:', tagName);
+      
+      - name: Checkout updated dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
       
       - name: Build application
         env:
@@ -74,6 +203,7 @@ jobs:
         run: npm run build:prod
       
       - name: Create Sentry release
+        if: env.SENTRY_AUTH_TOKEN != ''
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -91,11 +221,15 @@ jobs:
           tag_name: v${{ steps.version.outputs.new_version }}
           name: Release v${{ steps.version.outputs.new_version }}
           body: |
-            ## Changes in this Release
+            ## 🚀 Changes in this Release
             
             **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
-            
+            **Author:** @${{ github.event.pull_request.user.login }}
             **Version:** ${{ steps.current_version.outputs.current }} → ${{ steps.version.outputs.new_version }}
+            **Bump Type:** ${{ steps.bump_type.outputs.type }}
+            
+            ### 📝 Description
+            ${{ github.event.pull_request.body }}
             
             **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.current_version.outputs.current }}...v${{ steps.version.outputs.new_version }}
           draft: false
