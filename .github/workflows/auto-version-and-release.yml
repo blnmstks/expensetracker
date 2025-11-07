@@ -63,97 +63,106 @@ jobs:
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
       
-      - name: Get file contents
-        id: files
-        run: |
-          PACKAGE_JSON=$(cat package.json | base64 -w 0)
-          PACKAGE_LOCK=$(cat package-lock.json | base64 -w 0)
-          echo "package_json=$PACKAGE_JSON" >> $GITHUB_OUTPUT
-          echo "package_lock=$PACKAGE_LOCK" >> $GITHUB_OUTPUT
-      
-      - name: Commit version bump via API
+      - name: Commit and push version bump
+        id: commit_version
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            
             const version = '${{ steps.version.outputs.new_version }}';
             
-            // Get current commit SHA
-            const { data: refData } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'heads/dev'
-            });
-            
-            const currentCommitSha = refData.object.sha;
-            
-            // Get current tree
-            const { data: commitData } = await github.rest.git.getCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: currentCommitSha
-            });
-            
-            // Create blobs for updated files
-            const packageJsonContent = Buffer.from('${{ steps.files.outputs.package_json }}', 'base64').toString('utf-8');
-            const packageLockContent = Buffer.from('${{ steps.files.outputs.package_lock }}', 'base64').toString('utf-8');
-            
-            const { data: packageJsonBlob } = await github.rest.git.createBlob({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              content: packageJsonContent,
-              encoding: 'utf-8'
-            });
-            
-            const { data: packageLockBlob } = await github.rest.git.createBlob({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              content: packageLockContent,
-              encoding: 'utf-8'
-            });
-            
-            // Create new tree
-            const { data: newTree } = await github.rest.git.createTree({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              base_tree: commitData.tree.sha,
-              tree: [
-                {
-                  path: 'package.json',
-                  mode: '100644',
-                  type: 'blob',
-                  sha: packageJsonBlob.sha
-                },
-                {
-                  path: 'package-lock.json',
-                  mode: '100644',
-                  type: 'blob',
-                  sha: packageLockBlob.sha
-                }
-              ]
-            });
-            
-            // Create new commit
-            const { data: newCommit } = await github.rest.git.createCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              message: `chore: bump version to ${version} [skip ci]`,
-              tree: newTree.sha,
-              parents: [currentCommitSha]
-            });
-            
-            // Update reference
-            await github.rest.git.updateRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'heads/dev',
-              sha: newCommit.sha,
-              force: false
-            });
-            
-            console.log('Version bump committed:', newCommit.sha);
+            try {
+              // Read file contents directly
+              const packageJson = fs.readFileSync('package.json', 'utf8');
+              const packageLock = fs.readFileSync('package-lock.json', 'utf8');
+              
+              // Get current commit SHA
+              const { data: refData } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'heads/dev'
+              });
+              
+              const currentCommitSha = refData.object.sha;
+              console.log('Current commit SHA:', currentCommitSha);
+              
+              // Get current commit to access tree
+              const { data: commitData } = await github.rest.git.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: currentCommitSha
+              });
+              
+              // Create blobs for updated files
+              console.log('Creating blob for package.json...');
+              const { data: packageJsonBlob } = await github.rest.git.createBlob({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                content: packageJson,
+                encoding: 'utf-8'
+              });
+              
+              console.log('Creating blob for package-lock.json...');
+              const { data: packageLockBlob } = await github.rest.git.createBlob({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                content: packageLock,
+                encoding: 'utf-8'
+              });
+              
+              // Create new tree with updated files
+              console.log('Creating new tree...');
+              const { data: newTree } = await github.rest.git.createTree({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base_tree: commitData.tree.sha,
+                tree: [
+                  {
+                    path: 'package.json',
+                    mode: '100644',
+                    type: 'blob',
+                    sha: packageJsonBlob.sha
+                  },
+                  {
+                    path: 'package-lock.json',
+                    mode: '100644',
+                    type: 'blob',
+                    sha: packageLockBlob.sha
+                  }
+                ]
+              });
+              
+              // Create new commit
+              console.log('Creating new commit...');
+              const { data: newCommit } = await github.rest.git.createCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                message: `chore: bump version to ${version} [skip ci]`,
+                tree: newTree.sha,
+                parents: [currentCommitSha]
+              });
+              
+              // Update dev branch reference
+              console.log('Updating dev branch...');
+              await github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'heads/dev',
+                sha: newCommit.sha,
+                force: false
+              });
+              
+              console.log('✅ Version bump committed:', newCommit.sha);
+              return newCommit.sha;
+            } catch (error) {
+              console.error('❌ Error committing version bump:', error);
+              throw error;
+            }
       
-      - name: Create and push tag via API
+      - name: Create and push tag
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
@@ -161,32 +170,39 @@ jobs:
             const version = '${{ steps.version.outputs.new_version }}';
             const tagName = `v${version}`;
             
-            // Get latest commit SHA on dev
-            const { data: refData } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'heads/dev'
-            });
-            
-            // Create tag object
-            const { data: tag } = await github.rest.git.createTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: tagName,
-              message: `Release ${tagName}`,
-              object: refData.object.sha,
-              type: 'commit'
-            });
-            
-            // Create reference
-            await github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `refs/tags/${tagName}`,
-              sha: tag.sha
-            });
-            
-            console.log('Tag created:', tagName);
+            try {
+              // Get latest commit SHA on dev (after version bump)
+              const { data: refData } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'heads/dev'
+              });
+              
+              console.log('Creating tag for commit:', refData.object.sha);
+              
+              // Create annotated tag
+              const { data: tag } = await github.rest.git.createTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tagName,
+                message: `Release ${tagName}`,
+                object: refData.object.sha,
+                type: 'commit'
+              });
+              
+              // Create tag reference
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${tagName}`,
+                sha: tag.sha
+              });
+              
+              console.log('✅ Tag created:', tagName);
+            } catch (error) {
+              console.error('❌ Error creating tag:', error);
+              throw error;
+            }
       
       - name: Checkout updated dev
         uses: actions/checkout@v4
@@ -194,6 +210,9 @@ jobs:
           ref: dev
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
+      
+      - name: Install dependencies for build
+        run: npm ci
       
       - name: Build application
         env:
