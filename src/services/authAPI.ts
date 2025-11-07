@@ -1,34 +1,15 @@
 import axiosInstance from '../lib/axios';
 import { getCookie } from '../lib/cookie';
 
-async function getAuthFlow() {
-  try {
-    // запрашиваем корень allauth headless — он вернёт либо 200, либо 401 с info о flows и session_token
-    const res = await axiosInstance.get('/auth/app/v1/auth');
-    return res.data;
-  } catch (err: any) {
-    // allauth часто отвечает 401 с телом { flows, meta: { session_token } }
-    if (err.response?.data) return err.response.data;
-    throw err;
-  }
-}
-
-// Получить CSRF токен перед запросом
 export async function ensureCSRFToken(): Promise<string | undefined> {
   const existingToken = getCookie('csrftoken');
   if (existingToken) {
     return existingToken;
   }
 
-  try {
-    const response = await axiosInstance.get('/auth/app/v1/config');
-
-  // some backends return token in cookie, others in body - prefer cookie
-  const tokenFromBody = response.data?.csrftoken || response.data;
-  return tokenFromBody;
-  } catch (error) {
-    console.warn('⚠️ Не удалось получить CSRF токен:', error);
-  }
+  const { data } = await axiosInstance.get('/csrf/');
+  
+  return data?.csrfToken;
 }
 
 // Улучшенный authAPI с автоматическим получением CSRF
@@ -126,48 +107,8 @@ export const authAPI = {
   },
 
   logout: async () => {
+    await axiosInstance.delete('/logout/');
     await ensureCSRFToken();
-    try {
-      const response = await axiosInstance.request({
-        method: 'DELETE',
-        url: '/auth/app/v1/auth/session',
-      });
-      return response.data;
-    } catch (error: any) {
-        console.log(`Error ${error}`);
-    }
-  },
-
-  // Подтверждение email кодом
-  verifyEmail: async (code: string, sessionToken: string) => {
-    try {
-      const response = await axiosInstance.post('/auth/app/v1/auth/verify_email', {
-        code,
-        session_token: sessionToken,
-      }, {
-        headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
-      });
-      
-      console.log('✅ Email подтвержден:', response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error('⚠️ Ошибка верификации:', error);
-      throw error;
-    }
-  },
-
-  // Переслать код верификации
-  resendVerificationCode: async (email: string) => {
-    try {
-      const response = await axiosInstance.post('/auth/app/v1/auth/request_email_verification_code', {
-        email,
-      });
-      console.log('✅ Код верификации отправлен повторно');
-      return response.data;
-    } catch (error: any) {
-      console.error('⚠️ Ошибка отправки кода:', error);
-      throw error;
-    }
   },
 
   // Получить текущую сессию

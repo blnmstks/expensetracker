@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
@@ -10,16 +10,16 @@ import {
   message, 
   Typography, 
   Space,
-  Dropdown,
 } from 'antd';
 import { 
   CalendarOutlined, 
-  DeleteOutlined, 
-  MoreOutlined 
+  DeleteOutlined
 } from '@ant-design/icons';
+import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
 import { useCategories, useCurrency } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
-import { Currency, CurrencySettings, Expense } from '../types';
+import { Currency, Expense } from '../types';
+import type { SelectProps } from 'antd';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -28,20 +28,51 @@ interface AddExpenseProps {
   onAddExpense: (expense: Omit<Expense, 'id' | 'month' | 'year' | 'category_color' | 'category_name' | 'category_icon' | 'currency_code' | 'currency_symbol' | 'created_at'>) => void;
   expenses: Expense[];
   onDeleteExpense: (id: number) => void;
-  currencySettings: CurrencySettings;
 }
 
-export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySettings }: AddExpenseProps) {
+export function AddExpense({ onAddExpense, expenses, onDeleteExpense }: AddExpenseProps) {
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<Currency>({id: 1, code: 'USD', symbol: '$', name: 'US Dollar'});
+  const [currency, setCurrency] = useState<Currency | null>(null);
   const [category, setCategory] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [comment, setComment] = useState('');
-  const { categories, fetchCategories } = useCategories();
-  const { currency: fetchedCurrencies, fetchCurrency } = useCurrency();
+  const { categories, fetchCategories, fetchCategoryIcons } = useCategories();
+  const { 
+    currency: fetchedCurrencies, 
+    fetchCurrency,
+    defaultCurrency,
+    fetchDefaultCurrency,
+  } = useCurrency();
+  const { resolveCategoryIcon } = useCategoryIconResolver();
 
-  const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
+  // const hasMoreCurrencies = currencySettings.activeCurrencies.length > 3;
 
+  useEffect(() => {
+    fetchCategories();
+    fetchCurrency();
+    fetchDefaultCurrency();
+    fetchCategoryIcons();
+  }, []);
+
+  useEffect(() => {
+    if (!fetchedCurrencies.length) {
+      return;
+    }
+
+    setCurrency((prev) => {
+      if (prev && fetchedCurrencies.some((curr) => curr.id === prev.id)) {
+        return prev;
+      }
+
+      const defaultCurr =
+        fetchedCurrencies.find((curr) => curr.id === defaultCurrency) ||
+        fetchedCurrencies.find((curr) => curr.is_default) ||
+        fetchedCurrencies.find((curr) => curr.is_active) ||
+        fetchedCurrencies[0];
+
+      return defaultCurr ?? prev;
+    });
+  }, [defaultCurrency, fetchedCurrencies]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +89,11 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
     const categoryId = category ?? categories[0]?.id;
     if (!categoryId) {
       message.error('Выберите категорию');
+      return;
+    }
+
+    if (!currency) {
+      message.error('Выберите валюту');
       return;
     }
 
@@ -81,11 +117,6 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchCurrency();
-  }, []);
-
-  useEffect(() => {
     if (categories.length > 0) {
       setCategory((prev) => {
         if (prev !== null && categories.some((cat) => cat.id === prev)) {
@@ -95,6 +126,29 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
       });
     }
   }, [categories]);
+
+  const categoryOptions = useMemo<SelectProps<number>['options']>(() => {
+    return categories.map((cat) => {
+      const iconSymbol = resolveCategoryIcon(cat) || '📦';
+
+      return {
+        value: cat.id,
+        label: (
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 20, lineHeight: 1 }}>{iconSymbol}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>{cat.name}</span>
+          </span>
+        ),
+        searchLabel: `${cat.name}`.toLowerCase(),
+      };
+    });
+  }, [categories, resolveCategoryIcon]);
 
   return (
     <div style={{ maxWidth: '768px', margin: '0 auto' }}>
@@ -114,11 +168,13 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                   size="large"
                 />
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  {fetchedCurrencies.map((curr) => (
+                  {fetchedCurrencies
+                  .filter((curr) => curr.is_active)
+                  .map((curr) => (
                     <Button
                       key={curr.id}
                       type={currency?.id === curr.id ? 'primary' : 'default'}
-                      onClick={() => setCurrency({id: curr.id, code: curr.code, symbol: curr.symbol, name: curr.name})}
+                      onClick={() => setCurrency(curr)}
                       size="large"
                       style={{
                         minWidth: '48px',
@@ -130,10 +186,10 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                       {curr.symbol}
                     </Button>
                   ))}
-                  {hasMoreCurrencies && (
+                  {/* {hasMoreCurrencies && (
                     <Dropdown
                       menu={{
-                        items: currencySettings.activeCurrencies.map((curr) => ({
+                        items: fetchedCurrencies.map((curr) => ({
                           key: curr,
                           // label: `${getCurrencySymbol(curr)} ${AVAILABLE_CURRENCIES.find(c => c.id === curr)?.code}`,
                           // onClick: () => setCurrency(curr),
@@ -146,7 +202,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                         style={{ minWidth: '48px', backgroundColor: '#f5f5f5' }}
                       />
                     </Dropdown>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>
@@ -154,17 +210,27 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
             <div>
               <Text style={{ display: 'block', marginBottom: '8px' }}>Категория</Text>
               <Select<number>
-                value={category ?? undefined} 
+                showSearch
+                size="large"
+                placeholder="Выберите категорию"
+                value={category ?? undefined}
                 onChange={(value) => setCategory(value)}
                 style={{ width: '100%' }}
-                // size="large"
-              >
-                {categories.map((cat) => (
-                  <Select.Option key={cat.id} value={cat.id}>
-                    <span>{cat.icon} {cat.name}</span>
-                  </Select.Option>
-                ))}
-              </Select>
+                options={categoryOptions}
+                filterOption={(input, option) => {
+                  const normalizedInput = input.trim().toLowerCase();
+                  if (!normalizedInput) {
+                    return true;
+                  }
+                  const searchSource = (option?.searchLabel as string | undefined) ?? '';
+                  return searchSource.includes(normalizedInput);
+                }}
+                filterSort={(optionA, optionB) =>
+                  ((optionA?.searchLabel as string | undefined) || '').localeCompare(
+                    (optionB?.searchLabel as string | undefined) || ''
+                  )
+                }
+              />
             </div>
 
             <div>
@@ -217,7 +283,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {expenses.slice(0, 10).map((expense) => {
               const cat = getCategoryById(expense.category);
-              const expCurrency = expense.currency || currencySettings.defaultCurrency;
+              const iconSymbol = resolveCategoryIcon(cat) || '📦';
               return (
                 <div
                   key={expense.id}
@@ -242,7 +308,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                         flexShrink: 0
                       }}
                     >
-                      <span>{cat?.icon}</span>
+                      <span>{iconSymbol}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 500 }}>{cat?.name}</div>
@@ -251,7 +317,7 @@ export function AddExpense({ onAddExpense, expenses, onDeleteExpense, currencySe
                       </Text>
                       {expense.comment && (
                         <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {expense.comment}
+                          {expense.comment ?? ''}
                         </div>
                       )}
                     </div>

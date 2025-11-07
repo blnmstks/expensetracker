@@ -28,11 +28,28 @@ export type Category = {
   icon: string;
 };
 
+export type CategoryIcon = {
+  id: number;
+  emoji?: string;
+  emojy?: string;
+};
+
 export type Currency = {
   id: number;
   code: string;
-  symbol: string;
   name: string;
+  symbol: string;
+  rate: string;
+  is_active: boolean;
+  is_personal: boolean;
+  is_default?: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CurrencyRatePayload = {
+  id: number;
+  rate: string;
 };
 
 export type CurrencySettings = {

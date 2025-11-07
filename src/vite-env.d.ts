@@ -2,7 +2,9 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
-  // Добавьте другие переменные окружения здесь
+  readonly SENTRY_DSN: string;
+  readonly APP_VERSION: string;
+  readonly MODE: 'development' | 'production';
 }
 
 interface ImportMeta {

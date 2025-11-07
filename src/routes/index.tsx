@@ -1,40 +1,46 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, redirect } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { ExpensesPage, AnalyticsPage, HistoryPage, SettingsPage } from '../pages';
-import type { Expense, CurrencySettings } from '../App';
+import { TestAPIPage } from '../pages/TestAPIPage';
+import { Expense } from '../types';
+import { Login } from '../components/Login';
 
 interface RouterProps {
   expenses: Expense[];
-  currencySettings: CurrencySettings;
   onAddExpense: (expense: Omit<Expense, 'id'>) => Promise<Expense>;
   onDeleteExpense: (id: number) => void;
-  onUpdateCurrencySettings: (settings: CurrencySettings) => void;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
 }
 
 export const createAppRouter = ({
   expenses,
-  currencySettings,
   onAddExpense,
   onDeleteExpense,
-  onUpdateCurrencySettings,
   onLogout,
 }: RouterProps) => {
   return createBrowserRouter([
     {
       path: '/',
+      loader: () => {
+        if (localStorage.getItem('auth_token')) return redirect('/expenses');
+        return null;
+      },
+      element: <Login />,
+    },
+    {
       element: (
         <MainLayout
           expenses={expenses}
-          currencySettings={currencySettings}
           onLogout={onLogout}
         />
       ),
+      loader: () => {
+        if (!localStorage.getItem('auth_token')) {
+          return redirect('/');
+        }
+        return null;
+      },
       children: [
-        {
-          index: true,
-          element: <Navigate to="/expenses" replace />,
-        },
         {
           path: 'expenses',
           element: (
@@ -42,26 +48,26 @@ export const createAppRouter = ({
               onAddExpense={onAddExpense}
               expenses={expenses}
               onDeleteExpense={onDeleteExpense}
-              currencySettings={currencySettings}
             />
           ),
         },
         {
           path: 'analytics',
-          element: <AnalyticsPage currencySettings={currencySettings} />,
+          element: <AnalyticsPage />,
         },
         {
           path: 'history',
-          element: <HistoryPage currencySettings={currencySettings} />,
+          element: <HistoryPage />,
         },
         {
           path: 'settings',
           element: (
-            <SettingsPage
-              currencySettings={currencySettings}
-              onUpdateCurrencySettings={onUpdateCurrencySettings}
-            />
+            <SettingsPage />
           ),
+        },
+        {
+          path: 'test-api',
+          element: <TestAPIPage />,
         },
       ],
     },

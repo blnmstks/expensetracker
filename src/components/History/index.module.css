@@ -1,0 +1,279 @@
+.historyContainer {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headingWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #171717;
+}
+
+.historyCard {
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.historyCard :global(.ant-card-body) {
+  padding: 28px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listItem {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  padding: 20px 24px;
+  background-color: #fff;
+}
+
+.iconBlock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.categoryDate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.categoryName {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.currenciesComment {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  min-width: 0;
+}
+
+.conversions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.conversionItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+}
+
+.currencyCode {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.currencyAmount {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+.comment {
+  min-width: 0;
+  flex: 1;
+  padding-left: 32px;
+  padding-right: 56px;
+  color: #52525b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.commentLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.commentText {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #374151;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.deleteBlock {
+  align-self: stretch;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: #fff;
+  width: 44px;
+  height: 44px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deleteBlock:hover:not(:disabled) {
+  color: #f87171;
+  border-color: #fca5a5;
+}
+
+.deleteBlock:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.emptyCard {
+  text-align: center;
+  font-size: 16px;
+  color: #4b5563;
+}
+
+@media (max-width: 1024px) {
+  .listItem {
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+
+  .comment {
+    padding-right: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .historyContainer {
+    padding: 0 16px;
+    gap: 20px;
+  }
+
+  .historyCard :global(.ant-card-body) {
+    padding: 20px;
+  }
+
+  .list {
+    gap: 16px;
+  }
+
+  .listItem {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon delete'
+      'currencies currencies';
+    gap: 16px;
+    align-items: center;
+    padding: 18px 16px;
+  }
+
+  .iconBlock {
+    grid-area: icon;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .categoryName {
+    white-space: normal;
+  }
+
+  .categoryDate {
+    justify-content: center;
+  }
+
+  .currenciesComment {
+    grid-area: currencies;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .conversions {
+    gap: 12px;
+    justify-content: flex-start;
+  }
+
+  .conversionItem {
+    align-items: flex-start;
+  }
+
+  .comment {
+    padding: 0;
+  }
+
+  .deleteBlock {
+    grid-area: delete;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .historyContainer {
+    padding: 0 12px;
+  }
+
+  .heading {
+    font-size: 24px;
+  }
+
+  .historyCard :global(.ant-card-body) {
+    padding: 18px 14px;
+  }
+
+  .listItem {
+    padding: 16px 14px;
+  }
+
+  .conversionItem {
+    min-width: 0;
+  }
+
+  .deleteBlock {
+    width: 42px;
+    height: 42px;
+  }
+}

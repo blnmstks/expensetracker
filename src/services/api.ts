@@ -1,5 +1,5 @@
 import axiosInstance from '../lib/axios';
-import { Category, Expense } from '../types';
+import { Category, CurrencyRatePayload, Expense } from '../types';
 
 // Экспортируем authAPI из отдельного файла
 export { authAPI } from './authAPI';
@@ -49,6 +49,12 @@ export const expenseAPI = {
     const response = await axiosInstance.get<Expense[]>(`/expenses/category/${categoryId}/`);
     return response.data;
   },
+
+  // Получить ежемесячные расходы по категориям
+  categoryMontlyExpenses: async () => {
+    const response = await axiosInstance.get('/expenses/category_monthly/');
+    return response.data;
+  }
 };
 
 // API сервисы для работы с категориями
@@ -71,37 +77,54 @@ export const categoryAPI = {
   },
 
   // Удалить категорию
-  delete: async (id: string) => {
+  delete: async (id: number) => {
     const response = await axiosInstance.delete(`/categories/${id}/`);
     return response.data;
   },
+
+  categoryEmojiList: async () => {
+    const response = await axiosInstance.get('/category-icons/');
+    return response.data;
+  },
+
+  updateCategoryIcon: async (id: number, icon: string, name: string) => {
+    const response = await axiosInstance.patch(`/categories/${id}/`, { icon, name });
+    return response.data;
+  }
 };
 
 // API сервисы для работы с настройками валют
 export const currencyAPI = {
-  // // Получить настройки валют
-  // getSettings: async () => {
-  //   const response = await axiosInstance.get<CurrencySettings>('/currency/settings/');
-  //   return response.data;
-  // },
-
-  // // Обновить настройки валют
-  // updateSettings: async (settings: CurrencySettings) => {
-  //   const response = await axiosInstance.put<CurrencySettings>('/currency/settings/', settings);
-  //   return response.data;
-  // },
-
-  // // Получить актуальные курсы валют
-  // getExchangeRates: async (baseCurrency: string) => {
-  //   const response = await axiosInstance.get<Record<string, number>>('/currency/rates/', {
-  //     params: { base: baseCurrency },
-  //   });
-  //   return response.data;
-  // },
   getAll: async () => {
     const response = await axiosInstance.get('/currencies/');
     return response.data;
-  }
+  },
+
+  getDefaultCurrency: async () => {
+    const response = await axiosInstance.get('/currencies/default/');
+    return response.data;
+  },
+
+  setDefaultCurrency: async (id: number) => {
+    const response = await axiosInstance.post('/currencies/set-default/', {
+      currency: id,
+    });
+    return response.data;
+  },
+
+  setCurrencyActiveStatus: async (id: number, is_active: boolean) => {
+    const response = await axiosInstance.post(`/currencies/${id}/set-active/`, {
+      is_active,
+    });
+    return response.data;
+  },
+
+  setCurrencyRates: async (rates: CurrencyRatePayload[]) => {
+    const response = await axiosInstance.post('/currencies/bulk-update-rates/', {
+      currencies: rates,
+    });
+    return response.data;
+  },
 };
 
 // API сервисы для аналитики

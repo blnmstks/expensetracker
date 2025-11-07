@@ -1,199 +1,177 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { 
   Card, 
   Button, 
   Input, 
   Modal, 
-  Alert, 
-  Switch, 
   Checkbox, 
   Select, 
   Typography,
   Space,
-  Divider,
-  message,
-  Upload as AntUpload
 } from 'antd';
 import { 
   PlusOutlined, 
   DeleteOutlined, 
   EditOutlined, 
-  DownloadOutlined, 
-  UploadOutlined 
 } from '@ant-design/icons';
-import { AVAILABLE_CURRENCIES } from '../App';
-import { useCategories } from '../store';
-import { Category, CurrencySettings } from '../types';
+import { useCategoryIconResolver } from '../hooks/useCategoryIconResolver';
+import { useCategories, useCurrency } from '../store';
+import { Category } from '../types';
 
 const { Title, Text } = Typography;
 
-interface SettingsPageProps {
-  currencySettings: CurrencySettings;
-  onUpdateCurrencySettings: (settings: CurrencySettings) => void;
-}
+const COLOR_OPTIONS = [
+  '#FF3B30', // ярко-красный
+  '#FF9500', // оранжевый
+  '#FFCC00', // жёлтый
+  '#34C759', // зелёный
+  '#007AFF', // синий
+  '#5856D6', // фиолетовый
+  '#5AC8FA', // голубой
+  '#AF52DE', // лиловый
+  '#FF2D55', // розовый
+  '#8E8E93'  // серо-графитовый
+];
 
-const EMOJI_OPTIONS = ['🛒', '🚗', '🎮', '💊', '👕', '📚', '🏠', '✈️', '☕', '🍔', '🎬', '💰', '🎵', '🏃', '🐕', '🌳'];
-const COLOR_OPTIONS = ['#2078F3', '#3b82f6', '#60a5fa', '#1d4ed8', '#38bdf8', '#0ea5e9', '#93c5fd', '#dbeafe', '#1e3a8a', '#312e81'];
+type ManualRate = {
+  id: number;
+  rate: string;
+};
 
-export function SettingsPage({ 
-  currencySettings,
-  onUpdateCurrencySettings 
-}: SettingsPageProps) {
+export function SettingsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('📦');
   const [newCategoryColor, setNewCategoryColor] = useState('#2078F3');
-  const [defaultCurrencyOpen, setDefaultCurrencyOpen] = useState(false);
-  const [manualRates, setManualRates] = useState(currencySettings.exchangeRates);
-
-  const { categories, fetchCategories } = useCategories();
-    
-    useEffect(() => {
-      fetchCategories();
-    }, []);
   
+  const { defaultCurrency } = useCurrency();
+
+  const { categories, fetchCategories, deleteCategory: delCategory, updateCategoryIcon, fetchCategoryIcons, categoryIcons, createCategory } = useCategories();
+  const { resolveCategoryIcon, resolveIcon } = useCategoryIconResolver();
+  const { 
+    currency: currencies, 
+    fetchCurrency, 
+    setDefaultCurrency, 
+    setCurrencyActiveStatus,
+    setCurrencyRates, 
+  } = useCurrency();
+
+  const [manualRates, setManualRates] = useState<ManualRate[]>([]);
+  const [isSavingRates, setIsSavingRates] = useState(false);
+
+  const activeCurrencies = useMemo(
+    () => currencies.filter((currency) => currency.is_active),
+    [currencies],
+  );
+
+  useEffect(() => {
+    fetchCategories();
+    fetchCurrency();
+    fetchCategoryIcons();
+  }, []);
+
+  useEffect(() => {
+    setManualRates((previous) => {
+      const previousRates = new Map(previous.map((rate) => [rate.id, rate.rate]));
+      const nextRates = activeCurrencies.map<ManualRate>((currency) => ({
+        id: currency.id,
+        rate: previousRates.get(currency.id) ?? currency.rate ?? '',
+      }));
+
+      const isSameLength = nextRates.length === previous.length;
+      const isSameContent =
+        isSameLength &&
+        nextRates.every(
+          (rate, index) =>
+            rate.id === previous[index]?.id &&
+            rate.rate === previous[index]?.rate,
+        );
+
+      return isSameContent ? previous : nextRates;
+    });
+  }, [activeCurrencies]);
+
+  const handleManualRateChange = (id: number, rawValue: string) => {
+    const sanitized = rawValue.replace(',', '.');
+
+    setManualRates((previous) => {
+      const next = previous.some((rate) => rate.id === id)
+        ? previous.map((rate) =>
+            rate.id === id ? { ...rate, rate: sanitized } : rate,
+          )
+        : [...previous, { id, rate: sanitized }];
+
+      return next;
+    });
+  };
+
+  const handleSaveManualRates = async () => {
+    if (!manualRates.length) {
+      return;
+    }
+
+    setIsSavingRates(true);
+
+    try {
+      const ratesToPersist = manualRates.filter((rate) => rate.id !== defaultCurrency)
+
+      if (!ratesToPersist.length) {
+        return;
+      }
+      await setCurrencyRates(ratesToPersist);
+
+      setManualRates((previous) =>
+        previous.map((rate) => {
+          const updated = ratesToPersist.find((item) => item.id === rate.id);
+          return updated ? updated : rate;
+        }),
+      );
+    } finally {
+      setIsSavingRates(false);
+    }
+  };
+
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    // onAddCategory({
-    //   name: newCategoryName,
-    //   icon: newCategoryIcon,
-    //   color: newCategoryColor,
-    // });
-
-    setNewCategoryName('');
-    setNewCategoryIcon('📦');
-    setNewCategoryColor('#2078F3');
+    createCategory({
+      name: newCategoryName,
+      icon: newCategoryIcon,
+      color: '#3B82F6',
+    });
     setIsAddDialogOpen(false);
   };
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setNewCategoryName(category.name);
-    setNewCategoryIcon(category.icon);
+    setNewCategoryIcon(resolveCategoryIcon(category) || '📦');
     setNewCategoryColor(category.color);
   };
 
   const handleUpdateCategory = () => {
     if (!editingCategory || !newCategoryName.trim()) return;
 
-    // onUpdateCategory(editingCategory.id, {
-    //   name: newCategoryName,
-    //   icon: newCategoryIcon,
-    //   color: newCategoryColor,
-    // });
-
     setEditingCategory(null);
     setNewCategoryName('');
-    setNewCategoryIcon('📦');
-    setNewCategoryColor('#2078F3');
-  };
-
-  const handleExportData = () => {
-    const expenses = localStorage.getItem('expenses') || '[]';
-    const categoriesData = localStorage.getItem('categories') || '[]';
-    const currencyData = localStorage.getItem('currencySettings') || '{}';
+    setIsAddDialogOpen(false);
     
-    const data = {
-      expenses: JSON.parse(expenses),
-      categories: JSON.parse(categoriesData),
-      currencySettings: JSON.parse(currencyData),
-      exportDate: new Date().toISOString(),
+    updateCategoryIcon(editingCategory.id, newCategoryIcon, newCategoryName);
+  };
+  
+  const selectDefaultCurrency = (id: number) => {
+    setDefaultCurrency(id);
+  }
+
+  const handleActiveCurrencyToggle = (id: number, is_active: boolean) => {
+    setCurrencyActiveStatus(id, is_active);
+  }
+
+  const deleteCategory = (id: number) => {
+    return () => {
+      delCategory(id);
     };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expense-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        if (data.expenses) {
-          localStorage.setItem('expenses', JSON.stringify(data.expenses));
-        }
-        if (data.categories) {
-          localStorage.setItem('categories', JSON.stringify(data.categories));
-        }
-        if (data.currencySettings) {
-          localStorage.setItem('currencySettings', JSON.stringify(data.currencySettings));
-        }
-        window.location.reload();
-      } catch (error) {
-        alert('Ошибка при импорте данных. Проверьте формат файла.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleDefaultCurrencyChange = (currencyId: number) => {
-    const newActiveCurrencies = currencySettings.activeCurrencies.includes(currencyId)
-      ? currencySettings.activeCurrencies
-      : [...currencySettings.activeCurrencies, currencyId];
-
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      defaultCurrency: currencyId,
-      activeCurrencies: newActiveCurrencies,
-    });
-    setDefaultCurrencyOpen(false);
-  };
-
-  const handleActiveCurrencyToggle = (currencyId: number, checked: boolean) => {
-    if (currencyId === currencySettings.defaultCurrency) return; // Can't deselect default
-
-    const newActiveCurrencies = checked
-      ? [...currencySettings.activeCurrencies, currencyId]
-      : currencySettings.activeCurrencies.filter(c => c !== currencyId);
-
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      activeCurrencies: newActiveCurrencies,
-    });
-  };
-
-  const handleSyncToggle = (checked: boolean) => {
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      syncWithGoogle: checked,
-    });
-  };
-
-  const handleAdjustmentChange = (value: string) => {
-    const num = parseInt(value);
-    if (isNaN(num) || num < 0 || num > 9) return;
-    
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      googleRateAdjustment: num,
-    });
-  };
-
-  const handleManualRateChange = (currencyCode: string, value: string) => {
-    const rate = parseFloat(value);
-    if (isNaN(rate) || rate <= 0) return;
-
-    const newRates = { ...manualRates, [currencyCode]: rate };
-    setManualRates(newRates);
-  };
-
-  const handleSaveManualRates = () => {
-    onUpdateCurrencySettings({
-      ...currencySettings,
-      exchangeRates: manualRates,
-    });
   };
 
   return (
@@ -204,13 +182,15 @@ export function SettingsPage({
       <Card style={{ marginBottom: '24px' }} title="Дефолтная валюта">
         <Select
           style={{ width: '100%' }}
-          value={currencySettings.defaultCurrency}
-          onChange={handleDefaultCurrencyChange}
+          value={defaultCurrency}
+          onChange={selectDefaultCurrency}
           placeholder="Выберите валюту"
           showSearch
           optionFilterProp="children"
         >
-          {AVAILABLE_CURRENCIES.map((currency) => (
+          {currencies
+            .filter(currency => currency.is_active)
+            .map((currency) => (
             <Select.Option key={currency.id} value={currency.id}>
               {currency.name} ({currency.code})
             </Select.Option>
@@ -221,38 +201,39 @@ export function SettingsPage({
       {/* Active Currencies */}
       <Card style={{ marginBottom: '24px' }} title="Активные валюты">
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          {AVAILABLE_CURRENCIES.filter(c => 
-            currencySettings.activeCurrencies.includes(c.id) || c.id === currencySettings.defaultCurrency
-          ).map((currency) => (
-            <div key={currency.id} style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              padding: '12px', 
-              border: '1px solid #d9d9d9', 
-              borderRadius: '8px' 
-            }}>
-              <Space>
-                <span style={{ fontSize: '20px' }}>{currency.symbol}</span>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{currency.code}</div>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>{currency.name}</Text>
-                </div>
-              </Space>
-              <Checkbox
-                checked={currencySettings.activeCurrencies.includes(currency.id)}
-                onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
-                disabled={currency.id === currencySettings.defaultCurrency}
-              />
-            </div>
-          ))}
+          {currencies
+            .filter(c => c.is_active)
+            .map((currency) => (
+              <div key={currency.id} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                padding: '12px', 
+                border: '1px solid #d9d9d9', 
+                borderRadius: '8px' 
+              }}>
+                <Space>
+                  <span style={{ fontSize: '20px' }}>{currency.symbol}</span>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{currency.code}</div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{currency.name}</Text>
+                  </div>
+                </Space>
+                <Checkbox
+                  checked={currency.is_active}
+                  onChange={(e) => handleActiveCurrencyToggle(currency.id, e.target.checked)}
+                  disabled={currency.id === defaultCurrency}
+                />
+              </div>
+            ))
+          }
           
           <div style={{ paddingTop: '8px' }}>
             <Text type="secondary" style={{ fontSize: '12px' }}>Добавить другие валюты:</Text>
             <div style={{ marginTop: '8px', maxHeight: '160px', overflowY: 'auto' }}>
               <Space direction="vertical" style={{ width: '100%' }} size="small">
-                {AVAILABLE_CURRENCIES.filter(c => 
-                  !currencySettings.activeCurrencies.includes(c.id) && c.id !== currencySettings.defaultCurrency
+                {currencies.filter(c => 
+                  !c.is_active
                 ).map((currency) => (
                   <div key={currency.id} style={{ 
                     display: 'flex', 
@@ -281,62 +262,26 @@ export function SettingsPage({
       {/* Exchange Rates */}
       <Card style={{ marginBottom: '24px' }} title="Курсы валют">
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            padding: '12px', 
-            border: '1px solid #d9d9d9', 
-            borderRadius: '8px' 
-          }}>
-            <div>
-              <Text strong>Синхронизация с курсом Google</Text>
-              <div>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Автоматически обновлять курсы валют
-                </Text>
-              </div>
-            </div>
-            <Switch
-              checked={currencySettings.syncWithGoogle}
-              onChange={handleSyncToggle}
-            />
-          </div>
-
-          {currencySettings.syncWithGoogle && (
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <Text>Корректировка курса</Text>
-              <Space>
-                <Text type="secondary">+</Text>
-                <Input
-                  type="number"
-                  min={0}
-                  max={9}
-                  value={currencySettings.googleRateAdjustment}
-                  onChange={(e) => handleAdjustmentChange(e.target.value)}
-                  style={{ width: '80px' }}
-                />
-                <Text type="secondary">%</Text>
-              </Space>
-            </Space>
-          )}
-
-          {!currencySettings.syncWithGoogle && (
+          {
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Text>Ручной ввод курсов (относительно {AVAILABLE_CURRENCIES.find(c => c.id === currencySettings.defaultCurrency)?.code})</Text>
+              <Text>Ручной ввод курсов (относительно {currencies.find(c => c.id === defaultCurrency)?.code})</Text>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                {currencySettings.activeCurrencies.map((currId) => {
-                  const currency = AVAILABLE_CURRENCIES.find(c => c.id === currId);
+                {currencies
+                .filter(c => c.is_active)
+                .map((currId) => {
+                  const currency = currencies.find(c => c.id === currId.id);
                   if (!currency) return null;
+                  const manualRate = manualRates.find((rate) => rate.id === currency.id);
+
                   return (
-                    <Space key={currId} direction="vertical" size="small">
+                    <Space key={currId.id} direction="vertical" size="small">
                       <Text style={{ fontSize: '12px' }}>{currency.code}</Text>
                       <Input
                         type="number"
                         step="0.01"
-                        value={manualRates[currency.code] || 1}
-                        onChange={(e) => handleManualRateChange(currency.code, e.target.value)}
-                        disabled={currId === currencySettings.defaultCurrency}
+                        value={manualRate?.rate ?? ''}
+                        onChange={(e) => handleManualRateChange(currency.id, e.target.value)}
+                        disabled={currId.id === defaultCurrency}
                       />
                     </Space>
                   );
@@ -345,12 +290,13 @@ export function SettingsPage({
               <Button 
                 type="primary"
                 onClick={handleSaveManualRates}
+                loading={isSavingRates}
                 style={{ width: '100%', backgroundColor: '#2078F3', borderColor: '#2078F3' }}
               >
                 Сохранить курсы
               </Button>
             </Space>
-          )}
+          }
         </Space>
       </Card>
 
@@ -365,9 +311,9 @@ export function SettingsPage({
               icon={<PlusOutlined />}
               onClick={() => setIsAddDialogOpen(true)}
               style={{ backgroundColor: '#2078F3', borderColor: '#2078F3' }}
-            >
-              Добавить
-            </Button>
+            />
+              {/* Добавить */}
+            {/* </Button> */}
           </div>
         }
       >
@@ -397,7 +343,7 @@ export function SettingsPage({
                     backgroundColor: category.color + '20'
                   }}
                 >
-                  <span>{category.icon}</span>
+                  <span>{resolveCategoryIcon(category)}</span>
                 </div>
                 <Text>{category.name}</Text>
               </Space>
@@ -413,7 +359,7 @@ export function SettingsPage({
                 <Button
                   type="text"
                   icon={<DeleteOutlined style={{ fontSize: 16, color: '#8c8c8c' }} />}
-                  // onClick={() => onDeleteCategory(category.id)}
+                  onClick={deleteCategory(category.id)}
                 />
               </Space>
             </div>
@@ -468,28 +414,33 @@ export function SettingsPage({
               gap: '8px',
               marginTop: '8px'
             }}>
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setNewCategoryIcon(emoji)}
-                  style={{
-                    padding: '8px',
-                    border: `2px solid ${newCategoryIcon === emoji ? '#2078F3' : '#d9d9d9'}`,
-                    borderRadius: '4px',
-                    backgroundColor: newCategoryIcon === emoji ? '#E8F1FF' : 'white',
-                    cursor: 'pointer',
-                    fontSize: '20px',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
+              {categoryIcons.map((icon) => {
+                const emoji = resolveIcon(icon.id);
+                if (!emoji) {
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    onClick={() => setNewCategoryIcon(emoji)}
+                    style={{
+                      border: `2px solid ${newCategoryIcon === emoji ? '#2078F3' : '#d9d9d9'}`,
+                      borderRadius: '4px',
+                      backgroundColor: newCategoryIcon === emoji ? '#E8F1FF' : 'white',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
             </div>
           </div>
           
-          <div>
+          {/* <div>
             <Text>Цвет</Text>
             <div style={{ 
               display: 'grid', 
@@ -513,43 +464,9 @@ export function SettingsPage({
                 />
               ))}
             </div>
-          </div>
+          </div> */}
         </Space>
       </Modal>
-
-      {/* Data Management */}
-      <Card title="Управление данными">
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Space style={{ width: '100%' }} size="middle">
-            <Button 
-              icon={<DownloadOutlined />}
-              onClick={handleExportData}
-              style={{ flex: 1 }}
-            >
-              Экспорт данных
-            </Button>
-            <Button 
-              icon={<UploadOutlined />}
-              onClick={() => document.getElementById('import-file')?.click()}
-              style={{ flex: 1 }}
-            >
-              Импорт данных
-              <input
-                id="import-file"
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportData}
-              />
-            </Button>
-          </Space>
-          <Alert
-            message="Экспорт сохранит все ваши данные в JSON файл. Импорт восстановит данные из ранее сохранённого файла."
-            type="info"
-            showIcon
-          />
-        </Space>
-      </Card>
     </div>
   );
 }
