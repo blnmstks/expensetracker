@@ -8,9 +8,9 @@ export default defineConfig({
   plugins: [react(), sentryVitePlugin({
     org: "jemal-rm",
     project: "javascript-react",
-    disable: import.meta.env.MODE !== 'production',
+    disable: process.env.NODE_ENV !== 'production',
     release: {
-      name: `expense-tracker@${pacakageJson.version}`,
+      name: `expense-tracker@${packageJson.version}`,
       uploadSourceMaps: true,
     },
     sourcemaps: {
