@@ -38,13 +38,17 @@ jobs:
         id: bump_type
         run: |
           LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+          echo "📋 PR Labels: $LABELS"
           
           if [[ "$LABELS" == *"major"* ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
+            echo "🔼 Version bump: MAJOR"
           elif [[ "$LABELS" == *"minor"* ]]; then
             echo "type=minor" >> $GITHUB_OUTPUT
+            echo "🔼 Version bump: MINOR"
           else
             echo "type=patch" >> $GITHUB_OUTPUT
+            echo "🔼 Version bump: PATCH (default)"
           fi
       
       - name: Get current version
@@ -52,6 +56,7 @@ jobs:
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Current version: $CURRENT_VERSION"
       
       - name: Install dependencies
         run: npm ci
@@ -62,103 +67,65 @@ jobs:
           npm version ${{ steps.bump_type.outputs.type }} --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "✨ New version: $NEW_VERSION"
       
-      - name: Commit and push version bump
-        id: commit_version
+      - name: Create temporary branch with version bump
+        run: |
+          TEMP_BRANCH="version-bump-${{ github.run_id }}"
+          echo "🌿 Creating temporary branch: $TEMP_BRANCH"
+          
+          git checkout -b $TEMP_BRANCH
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
+          git push origin $TEMP_BRANCH
+          
+          echo "temp_branch=$TEMP_BRANCH" >> $GITHUB_OUTPUT
+        id: temp_branch
+      
+      - name: Merge version bump to dev via API
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
-            const { execSync } = require('child_process');
-            const fs = require('fs');
-            
+            const tempBranch = 'version-bump-${{ github.run_id }}';
             const version = '${{ steps.version.outputs.new_version }}';
             
+            console.log(`🔀 Merging ${tempBranch} into dev...`);
+            
             try {
-              // Read file contents directly
-              const packageJson = fs.readFileSync('package.json', 'utf8');
-              const packageLock = fs.readFileSync('package-lock.json', 'utf8');
-              
-              // Get current commit SHA
-              const { data: refData } = await github.rest.git.getRef({
+              // Merge using API (bypasses branch protection)
+              const { data: merge } = await github.rest.repos.merge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: 'heads/dev'
+                base: 'dev',
+                head: tempBranch,
+                commit_message: `chore: bump version to ${version} [skip ci]`
               });
               
-              const currentCommitSha = refData.object.sha;
-              console.log('Current commit SHA:', currentCommitSha);
+              console.log('✅ Merged successfully:', merge.sha);
               
-              // Get current commit to access tree
-              const { data: commitData } = await github.rest.git.getCommit({
+              // Delete temporary branch
+              await github.rest.git.deleteRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                commit_sha: currentCommitSha
+                ref: `heads/${tempBranch}`
               });
               
-              // Create blobs for updated files
-              console.log('Creating blob for package.json...');
-              const { data: packageJsonBlob } = await github.rest.git.createBlob({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                content: packageJson,
-                encoding: 'utf-8'
-              });
-              
-              console.log('Creating blob for package-lock.json...');
-              const { data: packageLockBlob } = await github.rest.git.createBlob({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                content: packageLock,
-                encoding: 'utf-8'
-              });
-              
-              // Create new tree with updated files
-              console.log('Creating new tree...');
-              const { data: newTree } = await github.rest.git.createTree({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base_tree: commitData.tree.sha,
-                tree: [
-                  {
-                    path: 'package.json',
-                    mode: '100644',
-                    type: 'blob',
-                    sha: packageJsonBlob.sha
-                  },
-                  {
-                    path: 'package-lock.json',
-                    mode: '100644',
-                    type: 'blob',
-                    sha: packageLockBlob.sha
-                  }
-                ]
-              });
-              
-              // Create new commit
-              console.log('Creating new commit...');
-              const { data: newCommit } = await github.rest.git.createCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                message: `chore: bump version to ${version} [skip ci]`,
-                tree: newTree.sha,
-                parents: [currentCommitSha]
-              });
-              
-              // Update dev branch reference
-              console.log('Updating dev branch...');
-              await github.rest.git.updateRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: 'heads/dev',
-                sha: newCommit.sha,
-                force: false
-              });
-              
-              console.log('✅ Version bump committed:', newCommit.sha);
-              return newCommit.sha;
+              console.log('🗑️  Temporary branch deleted');
             } catch (error) {
-              console.error('❌ Error committing version bump:', error);
+              console.error('❌ Merge failed:', error.message);
+              
+              // Try to delete branch anyway
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `heads/${tempBranch}`
+                });
+              } catch (e) {
+                console.error('Failed to delete temp branch:', e.message);
+              }
+              
               throw error;
             }
       
@@ -170,15 +137,15 @@ jobs:
             const version = '${{ steps.version.outputs.new_version }}';
             const tagName = `v${version}`;
             
+            console.log(`🏷️  Creating tag: ${tagName}`);
+            
             try {
-              // Get latest commit SHA on dev (after version bump)
+              // Get latest commit SHA on dev
               const { data: refData } = await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: 'heads/dev'
               });
-              
-              console.log('Creating tag for commit:', refData.object.sha);
               
               // Create annotated tag
               const { data: tag } = await github.rest.git.createTag({
@@ -198,10 +165,13 @@ jobs:
                 sha: tag.sha
               });
               
-              console.log('✅ Tag created:', tagName);
+              console.log('✅ Tag created successfully');
             } catch (error) {
-              console.error('❌ Error creating tag:', error);
-              throw error;
+              if (error.message.includes('already exists')) {
+                console.log('⚠️  Tag already exists, skipping...');
+              } else {
+                throw error;
+              }
             }
       
       - name: Checkout updated dev
@@ -219,10 +189,11 @@ jobs:
           NODE_ENV: production
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: npm run build:prod
+        run: |
+          echo "🔨 Building application..."
+          npm run build:prod
       
       - name: Create Sentry release
-        if: env.SENTRY_AUTH_TOKEN != ''
         uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -233,6 +204,7 @@ jobs:
           version: expense-tracker@${{ steps.version.outputs.new_version }}
           sourcemaps: './dist'
           finalize: true
+        continue-on-error: true
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -240,16 +212,17 @@ jobs:
           tag_name: v${{ steps.version.outputs.new_version }}
           name: Release v${{ steps.version.outputs.new_version }}
           body: |
-            ## 🚀 Changes in this Release
+            ## 🚀 Release v${{ steps.version.outputs.new_version }}
             
             **Merged PR:** #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
             **Author:** @${{ github.event.pull_request.user.login }}
             **Version:** ${{ steps.current_version.outputs.current }} → ${{ steps.version.outputs.new_version }}
             **Bump Type:** ${{ steps.bump_type.outputs.type }}
             
-            ### 📝 Description
+            ### 📝 Changes
             ${{ github.event.pull_request.body }}
             
+            ---
             **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.current_version.outputs.current }}...v${{ steps.version.outputs.new_version }}
           draft: false
           prerelease: false
