@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getCookie } from './cookie';
+import { ensureCSRFToken, getCSRFToken } from './csrf';
 
 
 // Экземпляр axios с базовыми настройками
@@ -18,23 +18,27 @@ const axiosInstance = axios.create({
 
 // Interceptor для добавления токена авторизации к каждому запросу
 axiosInstance.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // Получаем session token из localStorage
     const token = localStorage.getItem('auth_token');
     
-    // console.log(`🔵 REQUEST: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
-    // console.log('📤 Headers:', {
-    //   'X-Session-Token': token ? '***' + token.slice(-8) : 'not set',
-    //   'X-CSRFToken': getCookie('csrftoken') ? '***' : 'not set',
-    // });
-    
+    if (!config.headers) {
+      config.headers = {};
+    }
+
     if (token) {
       // Для django-allauth headless используем X-Session-Token
       config.headers['X-Session-Token'] = token;
     }
-    
-    // Для Django Session Auth: добавляем CSRF токен
-    const csrfToken = getCookie('csrftoken');
+
+    const method = config.method?.toLowerCase();
+    const requiresCSRF = method && ['post', 'put', 'patch', 'delete'].includes(method);
+
+    if (requiresCSRF) {
+      await ensureCSRFToken();
+    }
+
+    const csrfToken = getCSRFToken();
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
     }

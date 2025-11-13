@@ -20,19 +20,6 @@ import { Category } from '../types';
 
 const { Title, Text } = Typography;
 
-const COLOR_OPTIONS = [
-  '#FF3B30', // ярко-красный
-  '#FF9500', // оранжевый
-  '#FFCC00', // жёлтый
-  '#34C759', // зелёный
-  '#007AFF', // синий
-  '#5856D6', // фиолетовый
-  '#5AC8FA', // голубой
-  '#AF52DE', // лиловый
-  '#FF2D55', // розовый
-  '#8E8E93'  // серо-графитовый
-];
-
 type ManualRate = {
   id: number;
   rate: string;
@@ -439,32 +426,6 @@ export function SettingsPage() {
               })}
             </div>
           </div>
-          
-          {/* <div>
-            <Text>Цвет</Text>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(5, 1fr)', 
-              gap: '8px',
-              marginTop: '8px'
-            }}>
-              {COLOR_OPTIONS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setNewCategoryColor(color)}
-                  style={{
-                    height: '40px',
-                    border: `2px solid ${newCategoryColor === color ? '#000' : '#d9d9d9'}`,
-                    borderRadius: '4px',
-                    backgroundColor: color,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                />
-              ))}
-            </div>
-          </div> */}
         </Space>
       </Modal>
     </div>
