@@ -21,6 +21,7 @@ export default defineConfig({
   // Передаем версию в приложение через define
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || '/api'),
   },
 
   resolve: {
