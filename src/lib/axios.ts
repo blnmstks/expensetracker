@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { ensureCSRFToken, getCSRFToken } from './csrf';
+import { resolveApiBaseURL } from './apiBase';
 
 
 // Экземпляр axios с базовыми настройками
 const axiosInstance = axios.create({
-  // Используем относительный путь для работы через Vite proxy
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  // Используем helper, чтобы корректно определять базовый URL в dev/prod
+  baseURL: resolveApiBaseURL(),
   timeout: 10000, // 10 секунд
   headers: {
     'Content-Type': 'application/json',
