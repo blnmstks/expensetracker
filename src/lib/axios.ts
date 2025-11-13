@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ensureCSRFToken, getCSRFToken } from './csrf';
+import { ensureCSRFToken, attachCSRFFromConfig, updateCSRFTokenFromResponse } from './csrf';
 import { resolveApiBaseURL } from './apiBase';
 
 
@@ -39,10 +39,7 @@ axiosInstance.interceptors.request.use(
       await ensureCSRFToken();
     }
 
-    const csrfToken = getCSRFToken();
-    if (csrfToken) {
-      config.headers['X-CSRFToken'] = csrfToken;
-    }
+    attachCSRFFromConfig(config);
     return config;
   },
   (error) => {
@@ -53,9 +50,13 @@ axiosInstance.interceptors.request.use(
 // Interceptor для обработки ответов и ошибок
 axiosInstance.interceptors.response.use(
   (response) => {
+    updateCSRFTokenFromResponse(response);
     return response;
   },
   (error) => {
+    if (error.response) {
+      updateCSRFTokenFromResponse(error.response);
+    }
     // Обработка различных типов ошибок
     if (error.response) {
       // Сервер ответил с кодом ошибки

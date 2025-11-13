@@ -1,5 +1,4 @@
 import axiosInstance from '../lib/axios';
-import { ensureCSRFToken, getCSRFToken } from '../lib/csrf';
 
 // Улучшенный authAPI с автоматическим получением CSRF
 export const authAPI = {
@@ -10,17 +9,12 @@ export const authAPI = {
   },
 
   login: async (email: string, password: string) => {
-    // Ensure we have CSRF before POSTs
-    await ensureCSRFToken();
-
-    const csrf = getCSRFToken() || '';
-
     try {
       const response = await axiosInstance.post('/auth/app/v1/auth/login', {
         email,
         password,
         flow: 'login',
-      }, { headers: { 'X-CSRFToken': csrf } });
+      });
 
       return { success: true, data: response.data };
     } catch (error: any) {
@@ -47,15 +41,11 @@ export const authAPI = {
 
   // Регистрация
   register: async (email: string, password: string) => {
-    await ensureCSRFToken();
-
-    const csrf = getCSRFToken() || '';
-
     try {
       const response = await axiosInstance.post('/auth/app/v1/auth/signup', {
         email,
         password,
-      }, { headers: { 'X-CSRFToken': csrf } });
+      });
 
       const respData = response.data || {};
       const flows = respData?.data?.flows || respData?.flows || [];
@@ -97,7 +87,6 @@ export const authAPI = {
 
   logout: async () => {
     await axiosInstance.delete('/logout/');
-    await ensureCSRFToken();
   },
 
   // Получить текущую сессию
