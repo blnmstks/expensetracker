@@ -5,7 +5,7 @@ import { getCookie } from './cookie';
 // Экземпляр axios с базовыми настройками
 const axiosInstance = axios.create({
   // Используем относительный путь для работы через Vite proxy
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 10000, // 10 секунд
   headers: {
     'Content-Type': 'application/json',
