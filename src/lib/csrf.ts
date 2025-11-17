@@ -1,12 +1,11 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { getCookie } from './cookie';
-import { resolveApiBaseURL } from './apiBase';
 
 let csrfTokenCache: string | null = null;
 let csrfRequestPromise: Promise<string | null> | null = null;
 
 const csrfClient = axios.create({
-  baseURL: resolveApiBaseURL(),
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
 });
 

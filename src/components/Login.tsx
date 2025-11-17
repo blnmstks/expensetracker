@@ -24,11 +24,12 @@ export function Login() {
       if (response?.success) {
         const token = response?.data?.meta?.session_token;
         const isAuth = response.data?.meta?.is_authenticated;
-        
+
         if (isAuth) {
           message.success('Вход выполнен успешно!');
           localStorage.setItem('auth_token', token);
-          
+          localStorage.setItem('email', values.email);
+
           // Перенаправляем на страницу расходов
           window.location.href = '/expenses';
           return;

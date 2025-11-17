@@ -41,20 +41,19 @@ export default function App() {
   };
 
   // Обработчик выхода
-  const handleLogout = async () => {
-    try {
-      await authAPI.logout();
-      localStorage.removeItem('auth_token');
-      message.success('Вы вышли из системы');
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      message.error('Ошибка при выходе');
-      // Даже при ошибке очищаем токен и перенаправляем
-      localStorage.removeItem('auth_token');
-      window.location.href = '/';
-    }
-  };
+ const handleLogout = async () => {
+  try {
+    await authAPI.logout();
+    message.success('Вы вышли из системы');
+  } catch (error) {
+    console.error('Logout error:', error);
+    message.error('Ошибка при выходе');
+  } finally {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('email');
+    window.location.href = '/';
+  }
+};
 
 
   // Создаем роутер с актуальными данными
