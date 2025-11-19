@@ -1,6 +1,5 @@
 import axiosInstance from '../lib/axios';
 import { Category, CurrencyRatePayload, Expense } from '../types';
-import { ensureCSRFToken } from './authAPI';
 
 // Экспортируем authAPI из отдельного файла
 export { authAPI } from './authAPI';
@@ -21,21 +20,18 @@ export const expenseAPI = {
 
   // Создать новый расход
   create: async (expense: Omit<Expense, 'id'>) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.post<Expense>('/expenses/', expense);
     return response.data;
   },
 
   // Обновить расход
   update: async (id: string, expense: Partial<Expense>) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.put<Expense>(`/expenses/${id}/`, expense);
     return response.data;
   },
 
   // Удалить расход
   delete: async (id: string) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.delete(`/expenses/${id}/`);
     return response.data;
   },
@@ -70,21 +66,18 @@ export const categoryAPI = {
 
   // Создать новую категорию
   create: async (category: Omit<Category, 'id'>) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.post<Category>('/categories/', category);
     return response.data;
   },
 
   // Обновить категорию
   update: async (id: string, category: Partial<Category>) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.put<Category>(`/categories/${id}/`, category);
     return response.data;
   },
 
   // Удалить категорию
   delete: async (id: number) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.delete(`/categories/${id}/`);
     return response.data;
   },
@@ -95,7 +88,6 @@ export const categoryAPI = {
   },
 
   updateCategoryIcon: async (id: number, icon: string, name: string) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.patch(`/categories/${id}/`, { icon, name });
     return response.data;
   }
@@ -114,7 +106,6 @@ export const currencyAPI = {
   },
 
   setDefaultCurrency: async (id: number) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.post('/currencies/set-default/', {
       currency: id,
     });
@@ -122,7 +113,6 @@ export const currencyAPI = {
   },
 
   setCurrencyActiveStatus: async (id: number, is_active: boolean) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.post(`/currencies/${id}/set-active/`, {
       is_active,
     });
@@ -130,7 +120,6 @@ export const currencyAPI = {
   },
 
   setCurrencyRates: async (rates: CurrencyRatePayload[]) => {
-    await ensureCSRFToken();
     const response = await axiosInstance.post('/currencies/bulk-update-rates/', {
       currencies: rates,
     });

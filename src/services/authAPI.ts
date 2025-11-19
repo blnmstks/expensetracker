@@ -1,17 +1,6 @@
 import axiosInstance from '../lib/axios';
 import { getCookie } from '../lib/cookie';
 
-export async function ensureCSRFToken(): Promise<string | undefined> {
-  const existingToken = getCookie('csrftoken');
-  if (existingToken) {
-    return existingToken;
-  }
-
-  const { data } = await axiosInstance.get('/csrf/');
-  
-  return data?.csrfToken;
-}
-
 // Улучшенный authAPI с автоматическим получением CSRF
 export const authAPI = {
   // Проверить текущую сессию
@@ -21,9 +10,6 @@ export const authAPI = {
   },
 
   login: async (email: string, password: string) => {
-    // Ensure we have CSRF before POSTs
-    await ensureCSRFToken();
-
     const csrf = getCookie('csrftoken') || '';
 
     try {
@@ -58,8 +44,6 @@ export const authAPI = {
 
   // Регистрация
   register: async (email: string, password: string) => {
-    await ensureCSRFToken();
-
     const csrf = getCookie('csrftoken') || '';
 
     try {
@@ -108,7 +92,6 @@ export const authAPI = {
 
   logout: async () => {
     await axiosInstance.delete('/logout/');
-    await ensureCSRFToken();
   },
 
   // Получить текущую сессию
