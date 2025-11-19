@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { getCookie } from './cookie';
-import { ensureCSRFToken, needsCSRF } from './csrf';
+import { ensureCSRFToken, getCSRFToken, needsCSRF } from './csrf';
 
 
 // Экземпляр axios с базовыми настройками
@@ -28,11 +28,11 @@ axiosInstance.interceptors.request.use(
       config.headers['X-Session-Token'] = token;
     }
 
-    if (needsCSRF(config.method) && !getCookie('csrftoken')) {
+    if (needsCSRF(config.method) && !getCSRFToken()) {
       await ensureCSRFToken();
     }
 
-    const csrfToken = getCookie('csrftoken');
+    const csrfToken = getCSRFToken();
     if (csrfToken) {
       config.headers['X-CSRFToken'] = csrfToken;
     }

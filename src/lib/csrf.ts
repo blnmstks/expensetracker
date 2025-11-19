@@ -5,16 +5,32 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 const SAFE_METHODS = new Set(['get', 'head', 'options', 'trace']);
 
 let csrfRequest: Promise<string | undefined> | null = null;
+let cachedToken: string | undefined;
+
+const resolveTokenFromResponse = (data: any) =>
+  data?.csrfToken || data?.csrf_token || data?.token || undefined;
 
 const fetchCSRFToken = async (): Promise<string | undefined> => {
-  await axios.get(`${API_BASE}/csrf/`, {
+  const { data } = await axios.get(`${API_BASE}/csrf/`, {
     withCredentials: true,
   });
-  return getCookie('csrftoken') || undefined;
+
+  const tokenFromCookie = getCookie('csrftoken') || undefined;
+  const token = tokenFromCookie || resolveTokenFromResponse(data);
+
+  if (token) {
+    cachedToken = token;
+  }
+
+  return token;
+};
+
+export const getCSRFToken = (): string | undefined => {
+  return getCookie('csrftoken') || cachedToken;
 };
 
 export const ensureCSRFToken = async (): Promise<string | undefined> => {
-  const existing = getCookie('csrftoken');
+  const existing = getCSRFToken();
   if (existing) {
     return existing;
   }
